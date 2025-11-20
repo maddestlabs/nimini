@@ -5,11 +5,11 @@ Designed for interactive applications, games, and tools that need user-facing
 scripting without heavy dependencies.
 
 Features:
-• Zero external dependencies (Nim stdlib only)
-• Familiar Python-like syntax with Nim keywords
-• Simple native function binding API
-• Event-driven architecture
-• Automatic type conversion and error handling
+- Zero external dependencies (Nim stdlib only)
+- Familiar Python-like syntax with Nim keywords
+- Simple native function binding API
+- Event-driven architecture
+- Automatic type conversion and error handling
 
 Nimini trades some expressiveness for simplicity and ease of integration. 
 If you need maximum power, consider Lua. If you want Nim-like familiarity 
