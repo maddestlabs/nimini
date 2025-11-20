@@ -39,7 +39,7 @@ That's it. Three lines of registration. Your DSL scripts call your Nim code.
 ## Getting Started
 
 ```bash
-nimble install nimini
+nimble install https://github.com/maddestlabs/nimini
 ```
 
 Then in your `.nim` code:
