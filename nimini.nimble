@@ -12,9 +12,6 @@ skipDirs = @["tests"]
 # Dependencies
 requires "nim >= 1.6.0"
 
-# Executables (optional, for testing)
-bin = @["examples/repl"]
-
 # Tasks
 task test, "Run all tests":
   exec "nim c -r tests/tests.nim"
