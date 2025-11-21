@@ -82,7 +82,7 @@ var z = x + y
     let prog = parseDsl(tokenizeDsl(code))
     execProgram(prog, runtimeEnv)
     let z = getVar(runtimeEnv, "z")
-    assert z.f == 30.0
+    assert z.i == 30
 
   test "execute function call":
     initRuntime()
@@ -94,7 +94,7 @@ var result = double(5)
     let prog = parseDsl(tokenizeDsl(code))
     execProgram(prog, runtimeEnv)
     let result = getVar(runtimeEnv, "result")
-    assert result.f == 10.0
+    assert result.i == 10
 
   test "execute if statement":
     initRuntime()
@@ -121,7 +121,7 @@ for i in range(0, 5):
     let prog = parseDsl(tokenizeDsl(code))
     execProgram(prog, runtimeEnv)
     let sum = getVar(runtimeEnv, "sum")
-    assert sum.f == 10.0  # 0+1+2+3+4
+    assert sum.i == 10  # 0+1+2+3+4
 
   test "register native function":
     initRuntime()
