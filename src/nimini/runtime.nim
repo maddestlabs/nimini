@@ -280,15 +280,21 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
     noReturn()
 
   of skIf:
+    # Each branch gets its own scope
     if toBool(evalExpr(s.ifBranch.cond, env)):
-      return execBlock(s.ifBranch.stmts, env)
+      let childEnv = newEnv(env)
+      return execBlock(s.ifBranch.stmts, childEnv)
     for br in s.elifBranches:
       if toBool(evalExpr(br.cond, env)):
-        return execBlock(br.stmts, env)
-    return execBlock(s.elseStmts, env)
+        let childEnv = newEnv(env)
+        return execBlock(br.stmts, childEnv)
+    if s.elseStmts.len > 0:
+      let childEnv = newEnv(env)
+      return execBlock(s.elseStmts, childEnv)
+    noReturn()
 
   of skFor:
-    # Evaluate range bounds
+    # Evaluate range bounds in parent scope
     let startVal = evalExpr(s.forStart, env)
     let endVal = evalExpr(s.forEnd, env)
     let startInt = toInt(startVal)
@@ -296,10 +302,11 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
 
     # Loop from start to end-1 (like Python's range)
     for i in startInt ..< endInt:
-      # Set loop variable
-      setVar(env, s.forVar, valInt(i))
-      # Execute body
-      let res = execBlock(s.forBody, env)
+      # Create a new scope for each iteration with the loop variable
+      let loopEnv = newEnv(env)
+      defineVar(loopEnv, s.forVar, valInt(i))
+      # Execute body in loop scope
+      let res = execBlock(s.forBody, loopEnv)
       # If body returns, propagate the return
       if res.hasReturn:
         return res
@@ -317,7 +324,9 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
     withReturn(evalExpr(s.returnVal, env))
 
   of skBlock:
-    execBlock(s.stmts, env)
+    # Explicit blocks create their own scope
+    let blockEnv = newEnv(env)
+    execBlock(s.stmts, blockEnv)
 
 # ------------------------------------------------------------------------------
 # Program Execution

@@ -100,10 +100,11 @@ var result = double(5)
     initRuntime()
     let code = """
 var x = 10
+var y = ""
 if x > 5:
-  var y = "big"
+  y = "big"
 else:
-  var y = "small"
+  y = "small"
 """
     let prog = parseDsl(tokenizeDsl(code))
     execProgram(prog, runtimeEnv)
@@ -372,8 +373,103 @@ for i in range(5, 10):
 """
     let prog = parseDsl(tokenizeDsl(code))
     execProgram(prog, runtimeEnv)
-    # Loop variable persists after loop (no block scoping)
-    let i = getVar(runtimeEnv, "i")
+    # Loop variable 'i' is scoped to the loop and not accessible after
+    # But 'last' was declared outside and updated inside, so it's accessible
     let last = getVar(runtimeEnv, "last")
-    assert i.i == 9  # Last value of i
-    assert last.i == 9
+    assert last.i == 9  # Last value of loop variable
+
+suite "Scope Chain Tests":
+  test "if block scope isolation":
+    initRuntime()
+    let code = """
+var outer = 10
+if true:
+  var inner = 20
+  outer = outer + inner
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let outer = getVar(runtimeEnv, "outer")
+    assert outer.i == 30  # Outer variable was modified
+    # 'inner' should not be accessible here (would cause runtime error)
+
+  test "for loop scope isolation":
+    initRuntime()
+    let code = """
+var sum = 0
+for i in range(0, 5):
+  var temp = i * 2
+  sum = sum + temp
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let sum = getVar(runtimeEnv, "sum")
+    assert sum.f == 20.0  # 0+2+4+6+8
+    # 'i' and 'temp' should not be accessible here
+
+  test "nested scope resolution":
+    initRuntime()
+    let code = """
+var x = 1
+if true:
+  var y = 2
+  if true:
+    var z = 3
+    x = x + y + z
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let x = getVar(runtimeEnv, "x")
+    assert x.i == 6  # 1+2+3
+
+  test "shadowing in nested scopes":
+    initRuntime()
+    let code = """
+var x = 10
+if true:
+  var x = 20
+  if true:
+    var x = 30
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let x = getVar(runtimeEnv, "x")
+    assert x.i == 10  # Outer x unchanged by inner declarations
+
+  test "explicit block scope":
+    initRuntime()
+    let code = """
+var outer = 1
+block:
+  var inner = 2
+  outer = outer + inner
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let outer = getVar(runtimeEnv, "outer")
+    assert outer.i == 3
+
+  test "function parameter scope":
+    initRuntime()
+    let code = """
+var x = 100
+proc setX(val: int):
+  x = val
+setX(50)
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let x = getVar(runtimeEnv, "x")
+    assert x.i == 50  # Function can modify outer scope variables
+
+  test "loop variable shadowing":
+    initRuntime()
+    let code = """
+var i = 999
+for i in range(0, 3):
+  var x = i
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let i = getVar(runtimeEnv, "i")
+    assert i.i == 999  # Outer 'i' unchanged by loop variable
