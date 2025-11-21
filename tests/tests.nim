@@ -375,5 +375,5 @@ for i in range(5, 10):
     # Loop variable persists after loop (no block scoping)
     let i = getVar(runtimeEnv, "i")
     let last = getVar(runtimeEnv, "last")
-    assert i.f == 9.0  # Last value of i
-    assert last.f == 9.0
+    assert i.i == 9  # Last value of i
+    assert last.i == 9
