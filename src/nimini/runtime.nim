@@ -24,20 +24,16 @@ type
     params*: seq[string]
     stmts*: seq[Stmt]
 
+  # NOTE: no longer a variant (no 'case kind'). All fields always exist.
+  # 'kind' tells us which ones are meaningful, but reading v.f on an int
+  # value is now safe and just uses the synced value we store.
   Value* = ref object
-    case kind*: ValueKind
-    of vkNil:
-      discard
-    of vkInt:
-      i*: int
-    of vkFloat:
-      f*: float
-    of vkBool:
-      b*: bool
-    of vkString:
-      s*: string
-    of vkFunction:
-      fnVal*: FunctionVal
+    kind*: ValueKind
+    i*: int
+    f*: float
+    b*: bool
+    s*: string
+    fnVal*: FunctionVal
 
   Env* = object
     vars*: Table[string, Value]
@@ -53,14 +49,38 @@ proc `$`*(v: Value): string =
   of vkFunction: "<function>"
 
 # ------------------------------------------------------------------------------
-# Constructors
+# Value Constructors
 # ------------------------------------------------------------------------------
 
-proc valNil*(): Value = Value(kind: vkNil)
-proc valInt*(i: int): Value = Value(kind: vkInt, i: i)
-proc valFloat*(f: float): Value = Value(kind: vkFloat, f: f)
-proc valBool*(b: bool): Value = Value(kind: vkBool, b: b)
-proc valString*(s: string): Value = Value(kind: vkString, s: s)
+proc valNil*(): Value =
+  Value(kind: vkNil, i: 0, f: 0.0, b: false, s: "", fnVal: nil)
+
+# Keep i and f in sync so z.f works even for integer results
+proc valInt*(i: int): Value =
+  Value(kind: vkInt, i: i, f: float(i), b: false, s: "", fnVal: nil)
+
+proc valFloat*(f: float): Value =
+  Value(kind: vkFloat, i: int(f), f: f, b: false, s: "", fnVal: nil)
+
+proc valBool*(b: bool): Value =
+  Value(
+    kind: vkBool,
+    i: (if b: 1 else: 0),
+    f: (if b: 1.0 else: 0.0),
+    b: b,
+    s: "",
+    fnVal: nil
+  )
+
+proc valString*(s: string): Value =
+  Value(
+    kind: vkString,
+    i: 0,
+    f: 0.0,
+    b: (s.len > 0),
+    s: s,
+    fnVal: nil
+  )
 
 proc valNativeFunc*(fn: NativeFunc): Value =
   Value(kind: vkFunction, fnVal: FunctionVal(
@@ -79,7 +99,7 @@ proc valUserFunc*(params: seq[string]; stmts: seq[Stmt]): Value =
   ))
 
 # ------------------------------------------------------------------------------
-# Environment Handling
+# Environment
 # ------------------------------------------------------------------------------
 
 proc newEnv*(parent: ref Env = nil): ref Env =
@@ -143,8 +163,11 @@ type
     hasReturn: bool
     value: Value
 
-proc noReturn(): ExecResult = ExecResult(hasReturn: false, value: valNil())
-proc withReturn(v: Value): ExecResult = ExecResult(hasReturn: true, value: v)
+proc noReturn(): ExecResult =
+  ExecResult(hasReturn: false, value: valNil())
+
+proc withReturn(v: Value): ExecResult =
+  ExecResult(hasReturn: true, value: v)
 
 # ------------------------------------------------------------------------------
 # Expression Evaluation
@@ -163,32 +186,34 @@ proc evalCall(name: string; args: seq[Expr]; env: ref Env): Value =
 
   let fn = val.fnVal
 
-  # Evaluate argument list
-  var argVals: seq[Value] = @[]
-  for a in args:
-    argVals.add(evalExpr(a, env))
-
-  # Native function?
   if fn.isNative:
+    var argVals: seq[Value] = @[]
+    for a in args:
+      argVals.add evalExpr(a, env)
     return fn.native(env, argVals)
+  else:
+    # User-defined function
+    let callEnv = newEnv(env)
+    var argVals: seq[Value] = @[]
+    for a in args:
+      argVals.add evalExpr(a, env)
 
-  # User-defined
-  let child = newEnv(env)
-  for i, pname in fn.params:
-    if i < argVals.len:
-      defineVar(child, pname, argVals[i])
-    else:
-      defineVar(child, pname, valNil())
+    # Bind parameters
+    for i, pname in fn.params:
+      if i < argVals.len:
+        defineVar(callEnv, pname, argVals[i])
+      else:
+        defineVar(callEnv, pname, valNil())
 
-  var res = noReturn()
-  for st in fn.stmts:
-    res = execStmt(st, child)
-    if res.hasReturn:
-      return res.value
+    # Execute body, propagate return
+    for st in fn.stmts:
+      let res = execStmt(st, callEnv)
+      if res.hasReturn:
+        return res.value
 
-  return valNil()
+    valNil()
 
-# Arithmetic ------------------------------------------------------------
+# Main evalExpr --------------------------------------------------------
 
 proc evalExpr(e: Expr; env: ref Env): Value =
   case e.kind
@@ -202,8 +227,10 @@ proc evalExpr(e: Expr; env: ref Env): Value =
     let v = evalExpr(e.unaryExpr, env)
     case e.unaryOp
     of "-":
-      if v.kind == vkFloat: valFloat(-v.f)
-      else:                 valInt(-toInt(v))
+      if v.kind == vkFloat:
+        valFloat(-v.f)
+      else:
+        valInt(-toInt(v))
     of "not":
       valBool(not toBool(v))
     else:
@@ -256,8 +283,8 @@ proc evalExpr(e: Expr; env: ref Env): Value =
     of "<=": valBool(lf <= rf)
     of ">":  valBool(lf >  rf)
     of ">=": valBool(lf >= rf)
-
-    else: quit "Unknown binary op: " & e.op
+    else:
+      quit "Unknown binary op: " & e.op
 
   of ekCall:
     evalCall(e.funcName, e.args, env)
@@ -297,13 +324,16 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
     if toBool(evalExpr(s.ifBranch.cond, env)):
       let childEnv = newEnv(env)
       return execBlock(s.ifBranch.stmts, childEnv)
+
     for br in s.elifBranches:
       if toBool(evalExpr(br.cond, env)):
         let childEnv = newEnv(env)
         return execBlock(br.stmts, childEnv)
+
     if s.elseStmts.len > 0:
       let childEnv = newEnv(env)
       return execBlock(s.elseStmts, childEnv)
+
     noReturn()
 
   of skFor:
@@ -345,30 +375,20 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
 # Program Execution
 # ------------------------------------------------------------------------------
 
+var runtimeEnv*: ref Env
+
+proc initRuntime*() =
+  runtimeEnv = newEnv(nil)
+
 proc execProgram*(prog: Program; env: ref Env) =
   discard execBlock(prog.stmts, env)
 
 # ------------------------------------------------------------------------------
-# Global Runtime & Events
+# Native Function Registration / Globals
 # ------------------------------------------------------------------------------
-
-var runtimeEnv*: ref Env
-var events*: Table[string, Program] = initTable[string, Program]()
-
-proc initRuntime*() =
-  runtimeEnv = newEnv()
 
 proc registerNative*(name: string; fn: NativeFunc) =
   defineVar(runtimeEnv, name, valNativeFunc(fn))
-
-proc registerEvent*(name: string; prog: Program) =
-  events[name] = prog
-
-proc triggerEvent*(name: string) =
-  if name in events:
-    execProgram(events[name], runtimeEnv)
-
-# Convenience setters --------------------------------------------------
 
 proc setGlobal*(name: string; v: Value) =
   defineVar(runtimeEnv, name, v)
