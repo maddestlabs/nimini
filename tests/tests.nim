@@ -311,7 +311,7 @@ for i in range(0, 5):
     let prog = parseDsl(tokenizeDsl(code))
     execProgram(prog, runtimeEnv)
     let count = getVar(runtimeEnv, "count")
-    assert count.f == 5.0
+    assert count.i == 5
 
   test "execute for loop with accumulation":
     initRuntime()
@@ -323,7 +323,7 @@ for i in range(1, 6):
     let prog = parseDsl(tokenizeDsl(code))
     execProgram(prog, runtimeEnv)
     let sum = getVar(runtimeEnv, "sum")
-    assert sum.f == 15.0  # 1+2+3+4+5
+    assert sum.i == 15  # 1+2+3+4+5
 
   test "execute for loop with product":
     initRuntime()
@@ -335,7 +335,7 @@ for i in range(2, 5):
     let prog = parseDsl(tokenizeDsl(code))
     execProgram(prog, runtimeEnv)
     let product = getVar(runtimeEnv, "product")
-    assert product.f == 24.0  # 2*3*4
+    assert product.i == 24  # 2*3*4
 
   test "nested for loops":
     initRuntime()
@@ -348,7 +348,7 @@ for i in range(0, 3):
     let prog = parseDsl(tokenizeDsl(code))
     execProgram(prog, runtimeEnv)
     let sum = getVar(runtimeEnv, "sum")
-    assert sum.f == 9.0  # 3*3
+    assert sum.i == 9  # 3*3
 
   test "for loop with conditional":
     initRuntime()
@@ -362,7 +362,7 @@ for i in range(0, 10):
     let prog = parseDsl(tokenizeDsl(code))
     execProgram(prog, runtimeEnv)
     let evenSum = getVar(runtimeEnv, "evenSum")
-    assert evenSum.f == 20.0  # 0+2+4+6+8
+    assert evenSum.i == 20  # 0+2+4+6+8
 
   test "for loop variable scope":
     initRuntime()
@@ -404,7 +404,7 @@ for i in range(0, 5):
     let prog = parseDsl(tokenizeDsl(code))
     execProgram(prog, runtimeEnv)
     let sum = getVar(runtimeEnv, "sum")
-    assert sum.f == 20.0  # 0+2+4+6+8
+    assert sum.i == 20  # 0+2+4+6+8
     # 'i' and 'temp' should not be accessible here
 
   test "nested scope resolution":
