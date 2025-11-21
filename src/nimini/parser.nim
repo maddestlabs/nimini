@@ -235,6 +235,13 @@ proc parseReturn(p: var Parser): Stmt =
   let v = parseExpr(p)
   newReturn(v, tok.line, tok.col)
 
+proc parseBlockStmt(p: var Parser): Stmt =
+  let tok = advance(p)
+  discard expect(p, tkColon, "Expected ':'")
+  discard expect(p, tkNewline, "Expected newline")
+  let body = parseBlock(p)
+  newBlock(body, tok.line, tok.col)
+
 proc parseStmt(p: var Parser): Stmt =
   let t = p.cur()
 
@@ -246,6 +253,7 @@ proc parseStmt(p: var Parser): Stmt =
     of "for": return parseFor(p)
     of "proc": return parseProc(p)
     of "return": return parseReturn(p)
+    of "block": return parseBlockStmt(p)
     else:
       # Check for assignment (lookahead for '=')
       if p.pos+1 < p.tokens.len and p.tokens[p.pos+1].kind == tkOp and p.tokens[p.pos+1].lexeme == "=":
