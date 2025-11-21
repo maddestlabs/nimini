@@ -124,15 +124,256 @@ for i in range(0, 5):
 
   test "register native function":
     initRuntime()
-    
+
     proc testFunc(env: ref Env; args: seq[Value]): Value {.gcsafe.} =
       if args.len > 0 and args[0].kind == vkInt:
         return valInt(args[0].i * 2)
       return valNil()
-    
+
     registerNative("double", testFunc)
     let code = "var x = double(5)"
     let prog = parseDsl(tokenizeDsl(code))
     execProgram(prog, runtimeEnv)
     let x = getVar(runtimeEnv, "x")
     assert x.i == 10
+
+suite "Boolean Literal Tests":
+  test "tokenize boolean literals":
+    let tokens = tokenizeDsl("true false")
+    assert tokens[0].kind == tkIdent
+    assert tokens[0].lexeme == "true"
+    assert tokens[1].kind == tkIdent
+    assert tokens[1].lexeme == "false"
+
+  test "parse boolean literals":
+    let code = """
+var t = true
+var f = false
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    assert prog.stmts.len == 2
+    assert prog.stmts[0].kind == skVar
+    assert prog.stmts[0].varValue.kind == ekBool
+    assert prog.stmts[0].varValue.boolVal == true
+    assert prog.stmts[1].kind == skVar
+    assert prog.stmts[1].varValue.kind == ekBool
+    assert prog.stmts[1].varValue.boolVal == false
+
+  test "execute boolean literals":
+    initRuntime()
+    let code = """
+var t = true
+var f = false
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let t = getVar(runtimeEnv, "t")
+    let f = getVar(runtimeEnv, "f")
+    assert t.kind == vkBool
+    assert t.b == true
+    assert f.kind == vkBool
+    assert f.b == false
+
+  test "boolean expressions in conditions":
+    initRuntime()
+    let code = """
+var result = "unknown"
+if true:
+  result = "yes"
+else:
+  result = "no"
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let result = getVar(runtimeEnv, "result")
+    assert result.s == "yes"
+
+suite "Logical Operator Tests":
+  test "parse and operator":
+    let code = "var x = true and false"
+    let prog = parseDsl(tokenizeDsl(code))
+    assert prog.stmts[0].kind == skVar
+    assert prog.stmts[0].varValue.kind == ekBinOp
+    assert prog.stmts[0].varValue.op == "and"
+
+  test "parse or operator":
+    let code = "var x = true or false"
+    let prog = parseDsl(tokenizeDsl(code))
+    assert prog.stmts[0].kind == skVar
+    assert prog.stmts[0].varValue.kind == ekBinOp
+    assert prog.stmts[0].varValue.op == "or"
+
+  test "execute and operator":
+    initRuntime()
+    let code = """
+var a = true and true
+var b = true and false
+var c = false and true
+var d = false and false
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    assert getVar(runtimeEnv, "a").b == true
+    assert getVar(runtimeEnv, "b").b == false
+    assert getVar(runtimeEnv, "c").b == false
+    assert getVar(runtimeEnv, "d").b == false
+
+  test "execute or operator":
+    initRuntime()
+    let code = """
+var a = true or true
+var b = true or false
+var c = false or true
+var d = false or false
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    assert getVar(runtimeEnv, "a").b == true
+    assert getVar(runtimeEnv, "b").b == true
+    assert getVar(runtimeEnv, "c").b == true
+    assert getVar(runtimeEnv, "d").b == false
+
+  test "logical operator precedence":
+    initRuntime()
+    let code = """
+var x = true or false and false
+var y = false and false or true
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    # 'and' has higher precedence than 'or'
+    # x = true or (false and false) = true or false = true
+    # y = (false and false) or true = false or true = true
+    assert getVar(runtimeEnv, "x").b == true
+    assert getVar(runtimeEnv, "y").b == true
+
+  test "short-circuit evaluation for and":
+    initRuntime()
+    let code = """
+var called = false
+proc sideEffect():
+  called = true
+  return true
+var result = false and sideEffect()
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    # sideEffect() should NOT be called because first operand is false
+    let called = getVar(runtimeEnv, "called")
+    assert called.b == false
+
+  test "short-circuit evaluation for or":
+    initRuntime()
+    let code = """
+var called = false
+proc sideEffect():
+  called = true
+  return false
+var result = true or sideEffect()
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    # sideEffect() should NOT be called because first operand is true
+    let called = getVar(runtimeEnv, "called")
+    assert called.b == false
+
+  test "logical operators with comparisons":
+    initRuntime()
+    let code = """
+var x = 5
+var y = 10
+var result1 = x > 0 and y > 0
+var result2 = x > 10 or y > 5
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    assert getVar(runtimeEnv, "result1").b == true
+    assert getVar(runtimeEnv, "result2").b == true
+
+suite "For Loop Tests":
+  test "parse for loop with range":
+    let code = """
+for i in range(0, 5):
+  var x = i
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    assert prog.stmts[0].kind == skFor
+    assert prog.stmts[0].forVar == "i"
+
+  test "execute for loop with simple range":
+    initRuntime()
+    let code = """
+var count = 0
+for i in range(0, 5):
+  count = count + 1
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let count = getVar(runtimeEnv, "count")
+    assert count.f == 5.0
+
+  test "execute for loop with accumulation":
+    initRuntime()
+    let code = """
+var sum = 0
+for i in range(1, 6):
+  sum = sum + i
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let sum = getVar(runtimeEnv, "sum")
+    assert sum.f == 15.0  # 1+2+3+4+5
+
+  test "execute for loop with product":
+    initRuntime()
+    let code = """
+var product = 1
+for i in range(2, 5):
+  product = product * i
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let product = getVar(runtimeEnv, "product")
+    assert product.f == 24.0  # 2*3*4
+
+  test "nested for loops":
+    initRuntime()
+    let code = """
+var sum = 0
+for i in range(0, 3):
+  for j in range(0, 3):
+    sum = sum + 1
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let sum = getVar(runtimeEnv, "sum")
+    assert sum.f == 9.0  # 3*3
+
+  test "for loop with conditional":
+    initRuntime()
+    let code = """
+var evenSum = 0
+for i in range(0, 10):
+  var remainder = i % 2
+  if remainder == 0:
+    evenSum = evenSum + i
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    let evenSum = getVar(runtimeEnv, "evenSum")
+    assert evenSum.f == 20.0  # 0+2+4+6+8
+
+  test "for loop variable scope":
+    initRuntime()
+    let code = """
+var last = 0
+for i in range(5, 10):
+  last = i
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    execProgram(prog, runtimeEnv)
+    # Loop variable persists after loop (no block scoping)
+    let i = getVar(runtimeEnv, "i")
+    let last = getVar(runtimeEnv, "last")
+    assert i.f == 9.0  # Last value of i
+    assert last.f == 9.0

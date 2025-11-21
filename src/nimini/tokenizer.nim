@@ -223,11 +223,14 @@ proc tokenizeDsl*(src: string): seq[Token] =
     # ------------------------------
     let startCol = col
 
+    # Note: "and" and "or" are tokenized as identifiers (above) and handled
+    # as keyword operators by the parser, not as operator tokens here
+
     # multi-char ops
     if i+1 < src.len:
       let two = src[i] & src[i+1]
       case two
-      of "==", "!=", "<=", ">=", "or", "and":
+      of "==", "!=", "<=", ">=":
         addToken(res, tkOp, two, line, startCol)
         inc i, 2
         col += 2
