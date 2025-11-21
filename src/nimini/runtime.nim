@@ -339,7 +339,7 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
   of skBlock:
     # Explicit blocks create their own scope
     let blockEnv = newEnv(env)
-    execBlock(s.stmts, blockEnv)
+    return execBlock(s.stmts, blockEnv)
 
 # ------------------------------------------------------------------------------
 # Program Execution
