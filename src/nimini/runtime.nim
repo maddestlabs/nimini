@@ -227,15 +227,28 @@ proc evalExpr(e: Expr; env: ref Env): Value =
     # Evaluate both sides for other operators
     let l = evalExpr(e.left, env)
     let r = evalExpr(e.right, env)
+
+    # Check if both operands are integers for arithmetic ops
+    let bothInts = (l.kind == vkInt and r.kind == vkInt)
     let lf = toFloat(l)
     let rf = toFloat(r)
 
     case e.op
-    of "+":  valFloat(lf + rf)
-    of "-":  valFloat(lf - rf)
-    of "*":  valFloat(lf * rf)
-    of "/":  valFloat(lf / rf)
-    of "%": valFloat(lf mod rf)
+    of "+":
+      if bothInts: valInt(l.i + r.i)
+      else: valFloat(lf + rf)
+    of "-":
+      if bothInts: valInt(l.i - r.i)
+      else: valFloat(lf - rf)
+    of "*":
+      if bothInts: valInt(l.i * r.i)
+      else: valFloat(lf * rf)
+    of "/":
+      if bothInts: valInt(l.i div r.i)
+      else: valFloat(lf / rf)
+    of "%":
+      if bothInts: valInt(l.i mod r.i)
+      else: valFloat(lf mod rf)
 
     of "==": valBool(lf == rf)
     of "!=": valBool(lf != rf)
