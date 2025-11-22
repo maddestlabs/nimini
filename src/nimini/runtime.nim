@@ -379,6 +379,7 @@ var runtimeEnv*: ref Env
 
 proc initRuntime*() =
   runtimeEnv = newEnv(nil)
+  # Note: Plugin system is initialized on-demand in plugin.nim
 
 proc execProgram*(prog: Program; env: ref Env) =
   discard execBlock(prog.stmts, env)
