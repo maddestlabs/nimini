@@ -9,7 +9,7 @@ proc valToVec2(v: Value): Vector2 =
   # (You need to define how Value holds structured data; this is just an example.)
   let xm = v.getByKey("x")
   let ym = v.getByKey("y")
-  result = Vector2(x: xm.f.f32, y: ym.f.f32)  # depends on how your Value stores floats
+  result = Vector2(x: float32(xm.f), y: float32(ym.f))
 
 proc vec2ToVal(v: Vector2): Value =
   var m = newMapValue()  # or whatever you use in Value to create map-like
@@ -19,10 +19,10 @@ proc vec2ToVal(v: Vector2): Value =
 
 proc valToColor(v: Value): Color =
   # assuming v has "r","g","b","a"
-  let r = v.getByKey("r").i.uint8
-  let g = v.getByKey("g").i.uint8
-  let b = v.getByKey("b").i.uint8
-  let a = v.getByKey("a").i.uint8
+  let r = uint8(v.getByKey("r").i)
+  let g = uint8(v.getByKey("g").i)
+  let b = uint8(v.getByKey("b").i)
+  let a = uint8(v.getByKey("a").i)
   result = Color(r: r, g: g, b: b, a: a)
 
 proc colorToVal(c: Color): Value =
@@ -52,7 +52,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
         let `ident("a" & $(idx))` = `argsSym`[`ai`].i.cint
     of "float32", "float", "cfloat":
       quote do:
-        let `ident("a" & $(idx))` = `argsSym`[`ai`].f.f32
+        let `ident("a" & $(idx))` = float32(`argsSym`[`ai`].f)
     of "string", "cstring":
       quote do:
         let `ident("a" & $(idx))` = `argsSym`[`ai`].s
@@ -73,10 +73,10 @@ macro generateRaylibPlugin*(p: var Plugin) =
       quote do:
         let rmap = `argsSym`[`ai`]
         let `ident("a" & $(idx))` = Rectangle(
-          x: rmap.getByKey("x").f.f32,
-          y: rmap.getByKey("y").f.f32,
-          width: rmap.getByKey("width").f.f32,
-          height: rmap.getByKey("height").f.f32)
+          x: float32(rmap.getByKey("x").f),
+          y: float32(rmap.getByKey("y").f),
+          width: float32(rmap.getByKey("width").f),
+          height: float32(rmap.getByKey("height").f))
     else:
       # unsupported, skip
       newStmtList()
@@ -200,8 +200,8 @@ proc createRaylibPlugin*(): Plugin =
   # Make sure any helpers needed at runtime are available:
   p.registerFunc("vec2", proc (env: ref Env; args: seq[Value]): Value =
     if args.len >= 2:
-      let vx = args[0].f.f32
-      let vy = args[1].f.f32
+      let vx = float32(args[0].f)
+      let vy = float32(args[1].f)
       return vec2ToVal(Vector2(x: vx, y: vy))
     else:
       echo "vec2(x, y)"
@@ -212,10 +212,10 @@ proc createRaylibPlugin*(): Plugin =
   # Similarly for color constructor (if you want):
   p.registerFunc("color", proc (env: ref Env; args: seq[Value]): Value =
     if args.len >= 4:
-      let r = args[0].i.uint8
-      let g = args[1].i.uint8
-      let b = args[2].i.uint8
-      let a = args[3].i.uint8
+      let r = uint8(args[0].i)
+      let g = uint8(args[1].i)
+      let b = uint8(args[2].i)
+      let a = uint8(args[3].i)
       return colorToVal(Color(r: r, g: g, b: b, a: a))
     else:
       echo "color(r, g, b, a)"
