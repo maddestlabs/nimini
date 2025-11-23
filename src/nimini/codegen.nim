@@ -5,6 +5,8 @@ import std/[strutils, tables, sets]
 import ast
 import plugin
 
+export plugin  # Re-export plugin types so they're available when importing codegen
+
 # ------------------------------------------------------------------------------
 # Codegen Context
 # ------------------------------------------------------------------------------

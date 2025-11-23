@@ -19,7 +19,12 @@
 ##   # Execute
 ##   execProgram(program, runtimeEnv)
 
-import nimini/[ast, tokenizer, parser, runtime, plugin, codegen]
+import nimini/ast
+import nimini/tokenizer
+import nimini/parser
+import nimini/runtime
+import nimini/plugin
+import nimini/codegen
 
 # Re-export everything
 export ast
