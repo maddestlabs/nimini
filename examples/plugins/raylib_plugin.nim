@@ -46,33 +46,34 @@ macro generateRaylibPlugin*(p: var Plugin) =
   proc makeArgConv(paramType: NimNode, idx: int): NimNode =
     let ai = newLit(idx)
     let argsSym = ident("args")
+    let varName = ident("a" & $idx)
     case $paramType
     of "int", "cint":
       quote do:
-        let `ident("a" & $(idx))` = `argsSym`[`ai`].i.cint
+        let `varName` = `argsSym`[`ai`].i.cint
     of "float32", "float", "cfloat":
       quote do:
-        let `ident("a" & $(idx))` = float32(`argsSym`[`ai`].f)
+        let `varName` = float32(`argsSym`[`ai`].f)
     of "string", "cstring":
       quote do:
-        let `ident("a" & $(idx))` = `argsSym`[`ai`].s
+        let `varName` = `argsSym`[`ai`].s
     of "bool":
       quote do:
-        let `ident("a" & $(idx))` = `argsSym`[`ai`].b
+        let `varName` = `argsSym`[`ai`].b
     of "Vector2":
       quote do:
-        let `ident("a" & $(idx))` = valToVec2(`argsSym`[`ai`])
+        let `varName` = valToVec2(`argsSym`[`ai`])
     of "Vector3":
       quote do:
-        let `ident("a" & $(idx))` = valToVec2(`argsSym`[`ai`])  # (you'll want a valToVec3 similar)
+        let `varName` = valToVec2(`argsSym`[`ai`])  # (you'll want a valToVec3 similar)
     of "Color":
       quote do:
-        let `ident("a" & $(idx))` = valToColor(`argsSym`[`ai`])
+        let `varName` = valToColor(`argsSym`[`ai`])
     of "Rectangle":
       # For Rectangle, assuming Value has "x","y","width","height"
       quote do:
         let rmap = `argsSym`[`ai`]
-        let `ident("a" & $(idx))` = Rectangle(
+        let `varName` = Rectangle(
           x: float32(rmap.getByKey("x").f),
           y: float32(rmap.getByKey("y").f),
           width: float32(rmap.getByKey("width").f),
