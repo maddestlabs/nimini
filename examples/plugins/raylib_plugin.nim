@@ -9,7 +9,7 @@ proc valToVec2(v: Value): Vector2 =
   # (You need to define how Value holds structured data; this is just an example.)
   let xm = v.getByKey("x")
   let ym = v.getByKey("y")
-  result = Vector2(xm.f.f32, ym.f.f32)  # depends on how your Value stores floats
+  result = Vector2(x: xm.f.f32, y: ym.f.f32)  # depends on how your Value stores floats
 
 proc vec2ToVal(v: Vector2): Value =
   var m = newMapValue()  # or whatever you use in Value to create map-like
@@ -23,7 +23,7 @@ proc valToColor(v: Value): Color =
   let g = v.getByKey("g").i.uint8
   let b = v.getByKey("b").i.uint8
   let a = v.getByKey("a").i.uint8
-  result = Color(r, g, b, a)
+  result = Color(r: r, g: g, b: b, a: a)
 
 proc colorToVal(c: Color): Value =
   var m = newMapValue()
@@ -73,10 +73,10 @@ macro generateRaylibPlugin*(p: var Plugin) =
       quote do:
         let rmap = `argsSym`[`ai`]
         let `ident("a" & $(idx))` = Rectangle(
-          rmap.getByKey("x").f.f32,
-          rmap.getByKey("y").f.f32,
-          rmap.getByKey("width").f.f32,
-          rmap.getByKey("height").f.f32)
+          x: rmap.getByKey("x").f.f32,
+          y: rmap.getByKey("y").f.f32,
+          width: rmap.getByKey("width").f.f32,
+          height: rmap.getByKey("height").f.f32)
     else:
       # unsupported, skip
       newStmtList()
@@ -202,7 +202,7 @@ proc createRaylibPlugin*(): Plugin =
     if args.len >= 2:
       let vx = args[0].f.f32
       let vy = args[1].f.f32
-      return vec2ToVal(Vector2(vx, vy))
+      return vec2ToVal(Vector2(x: vx, y: vy))
     else:
       echo "vec2(x, y)"
       return valNil()
@@ -216,7 +216,7 @@ proc createRaylibPlugin*(): Plugin =
       let g = args[1].i.uint8
       let b = args[2].i.uint8
       let a = args[3].i.uint8
-      return colorToVal(Color(r, g, b, a))
+      return colorToVal(Color(r: r, g: g, b: b, a: a))
     else:
       echo "color(r, g, b, a)"
       return valNil()
