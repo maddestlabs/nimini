@@ -14,7 +14,8 @@ type
     vkFloat,
     vkBool,
     vkString,
-    vkFunction
+    vkFunction,
+    vkMap
 
   NativeFunc* = proc(env: ref Env; args: seq[Value]): Value
 
@@ -31,6 +32,7 @@ type
     b*: bool
     s*: string
     fnVal*: FunctionVal
+    map*: Table[string, Value]
 
   Env* = object
     vars*: Table[string, Value]
@@ -44,6 +46,14 @@ proc `$`*(v: Value): string =
   of vkBool: $v.b
   of vkString: v.s
   of vkFunction: "<function>"
+  of vkMap:
+    result = "{"
+    var first = true
+    for k, val in v.map:
+      if not first: result.add(", ")
+      result.add(k & ": " & $val)
+      first = false
+    result.add("}")
 
 # ------------------------------------------------------------------------------
 # Value Constructors
@@ -95,6 +105,34 @@ proc valUserFunc*(params: seq[string]; stmts: seq[Stmt]): Value =
     stmts: stmts
   ))
 
+proc valMap*(initialMap: Table[string, Value] = initTable[string, Value]()): Value =
+  Value(kind: vkMap, map: initialMap)
+
+# Alias for compatibility with plugin code
+proc newMapValue*(): Value =
+  valMap()
+
+# Map access operators
+proc `[]`*(v: Value; key: string): Value =
+  if v.kind != vkMap:
+    quit "Runtime Error: Cannot index non-map value"
+  if key in v.map:
+    return v.map[key]
+  return valNil()
+
+proc `[]=`*(v: Value; key: string; val: Value) =
+  if v.kind != vkMap:
+    quit "Runtime Error: Cannot set key on non-map value"
+  v.map[key] = val
+
+proc getByKey*(v: Value; key: string): Value =
+  ## Get a value from a map by key. Returns valNil() if key not found.
+  if v.kind != vkMap:
+    quit "Runtime Error: getByKey called on non-map value"
+  if key in v.map:
+    return v.map[key]
+  return valNil()
+
 # ------------------------------------------------------------------------------
 # Environment
 # ------------------------------------------------------------------------------
@@ -136,6 +174,7 @@ proc toBool(v: Value): bool =
   of vkFloat: v.f != 0.0
   of vkString: v.s.len > 0
   of vkFunction: true
+  of vkMap: v.map.len > 0
 
 proc toFloat(v: Value): float =
   case v.kind
