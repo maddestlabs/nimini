@@ -16,7 +16,7 @@ type
     vkString,
     vkFunction
 
-  NativeFunc* = proc(env: ref Env; args: seq[Value]): Value {.gcsafe.}
+  NativeFunc* = proc(env: ref Env; args: seq[Value]): Value
 
   FunctionVal* = ref object
     isNative*: bool

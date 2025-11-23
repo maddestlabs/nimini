@@ -1,7 +1,7 @@
 ## Nimini Codegen Example
 
 import std/math
-import ../src/nimini
+import ../../src/nimini/[ast, runtime, tokenizer, plugin, parser, codegen]
 
 # Create a simple math plugin with runtime + codegen support
 proc createMathPlugin(): Plugin =
