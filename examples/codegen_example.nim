@@ -1,47 +1,59 @@
-## Example demonstrating Nimini codegen functionality
-## This shows how to transpile Nimini DSL to native Nim code
+## Nimini Codegen Example
 
 import std/math
-import ../src/nimini/[ast, tokenizer, parser, runtime, plugin, codegen]
+import ../src/nimini
 
-# Create a simple math plugin with codegen support
-proc createMathPlugin(): plugin.Plugin =
-  result = plugin.newPlugin(
-    name: "math",
-    author: "Nimini Team",
-    version: "1.0.0",
-    description: "Math functions with codegen support"
+# Create a simple math plugin with runtime + codegen support
+proc createMathPlugin(): Plugin =
+  let p = newPlugin(
+    name        = "math",
+    author      = "Nimini Team",
+    version     = "1.0.0",
+    description = "Math functions with runtime + codegen support"
   )
 
-  # Define native functions (for runtime execution)
+  # Native runtime functions --------------------------
+
   proc sqrtFunc(env: ref Env; args: seq[Value]): Value {.gcsafe.} =
-    if args.len < 1:
+    if args.len != 1:
       return valNil()
     return valFloat(sqrt(args[0].f))
 
   proc powFunc(env: ref Env; args: seq[Value]): Value {.gcsafe.} =
-    if args.len < 2:
+    if args.len != 2:
       return valNil()
     return valFloat(pow(args[0].f, args[1].f))
 
   # Register runtime functions
-  result.registerFunc("sqrt", sqrtFunc)
-  result.registerFunc("pow", powFunc)
-  result.registerConstantFloat("PI", 3.14159265359)
-  result.registerConstantFloat("E", 2.71828182846)
+  p.registerFunc("sqrt", sqrtFunc)
+  p.registerFunc("pow", powFunc)
+  p.registerConstantFloat("PI", 3.14159265359)
+  p.registerConstantFloat("E", 2.71828182846)
 
-  # Register codegen mappings
-  result.addNimImport("std/math")
-  result.mapFunction("sqrt", "sqrt")     # Maps to Nim's sqrt
-  result.mapFunction("pow", "pow")       # Maps to Nim's pow
-  result.mapConstant("PI", "PI")         # Maps to Nim's PI
-  result.mapConstant("E", "E")           # Maps to Nim's E
+  # Codegen mappings -------------------------------
+
+  # Codegen imports
+  p.addNimImport("std/math")
+
+  # DSL → Nim function mappings
+  p.mapFunction("sqrt", "sqrt")
+  p.mapFunction("pow", "pow")
+
+  # Constant mappings
+  p.mapConstant("PI", "PI")
+  p.mapConstant("E", "E")
+
+  return p
+
+
+# ------------------------------------------------------
+# Main example
+# ------------------------------------------------------
 
 proc main() =
   echo "=== Nimini Codegen Example ==="
   echo ""
 
-  # Define a simple Nimini program
   let dslCode = """
 var radius = 5.0
 var area = PI * pow(radius, 2.0)
@@ -55,35 +67,47 @@ var result = side * E
   echo "---"
   echo ""
 
+  # ------------------------------------------------------
   # Parse the DSL
-  let tokens = tokenizeDsl(dslCode)
+  # ------------------------------------------------------
+  let tokens  = tokenizeDsl(dslCode)
   let program = parseDsl(tokens)
 
-  # Initialize runtime and plugin
+  # ------------------------------------------------------
+  # Initialize runtime + plugin
+  # ------------------------------------------------------
   initRuntime()
+
   let mathPlugin = createMathPlugin()
   registerPlugin(mathPlugin)
   loadPlugin(mathPlugin, runtimeEnv)
 
-  # Execute in DSL runtime (interpreted)
+  # ------------------------------------------------------
+  # Execute in DSL runtime
+  # ------------------------------------------------------
   echo "Running in DSL runtime (interpreted):"
   execProgram(program, runtimeEnv)
   let runtimeResult = getVar(runtimeEnv, "result")
   echo "result = ", runtimeResult
   echo ""
 
-  # Generate Nim code (transpiled)
-  echo "Generated Nim code (for compilation):"
+  # ------------------------------------------------------
+  # Codegen transpilation
+  # ------------------------------------------------------
+  echo "Generated Nim code (transpiled):"
   echo "---"
+
   let ctx = newCodegenContext()
-  loadPluginsCodegen(ctx)  # Load codegen metadata from plugins
+  loadPluginsCodegen(ctx)
   let nimCode = generateNimCode(program, ctx)
+
   echo nimCode
   echo "---"
   echo ""
 
-  echo "The generated Nim code can be compiled with: nim c <file>.nim"
-  echo "This provides native performance while maintaining the same semantics."
+  echo "You can compile the generated Nim code with:"
+  echo "  nim c <file>.nim"
+
 
 when isMainModule:
   main()
