@@ -791,9 +791,11 @@ for i in range(0, 5):
     applyPluginCodegen(plugin, ctx)
 
     # Check that mappings were applied
-    assert "std/math" in ctx.imports
-    assert ctx.functionMappings["pow"] == "math.pow"
-    assert ctx.constantMappings["E"] == "math.E"
+    assert ctx.hasImport("std/math")
+    assert ctx.hasFunction("pow")
+    assert ctx.getFunctionMapping("pow") == "math.pow"
+    assert ctx.hasConstant("E")
+    assert ctx.getConstantMapping("E") == "math.E"
 
   test "generate code for proc definition":
     let code = """
