@@ -1,12 +1,12 @@
 ## Example demonstrating Nimini codegen functionality
 ## This shows how to transpile Nimini DSL to native Nim code
 
-import ../src/nimini
 import std/math
+import ../src/nimini/[ast, tokenizer, parser, runtime, plugin, codegen]
 
 # Create a simple math plugin with codegen support
-proc createMathPlugin(): Plugin =
-  result = newPlugin(
+proc createMathPlugin(): plugin.Plugin =
+  result = plugin.newPlugin(
     name: "math",
     author: "Nimini Team",
     version: "1.0.0",
