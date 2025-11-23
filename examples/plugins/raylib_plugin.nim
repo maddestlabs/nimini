@@ -237,6 +237,28 @@ proc createRaylibPlugin*(): Plugin =
   result.setOnLoad(onLoadHook)
   result.setOnUnload(onUnloadHook)
 
+  # Configure codegen mappings for transpilation to native Nim
+  result.addNimImport("raylib")
+
+  # Map DSL functions to native raylib functions
+  result.mapFunction("InitWindow", "raylib.InitWindow")
+  result.mapFunction("CloseWindow", "raylib.CloseWindow")
+  result.mapFunction("WindowShouldClose", "raylib.WindowShouldClose")
+  result.mapFunction("SetTargetFPS", "raylib.SetTargetFPS")
+  result.mapFunction("BeginDrawing", "raylib.BeginDrawing")
+  result.mapFunction("EndDrawing", "raylib.EndDrawing")
+  result.mapFunction("ClearBackground", "raylib.ClearBackground")
+  result.mapFunction("DrawText", "raylib.DrawText")
+
+  # Map DSL color constants to raylib colors
+  result.mapConstant("RED", "raylib.RED")
+  result.mapConstant("GREEN", "raylib.GREEN")
+  result.mapConstant("BLUE", "raylib.BLUE")
+  result.mapConstant("YELLOW", "raylib.YELLOW")
+  result.mapConstant("BLACK", "raylib.BLACK")
+  result.mapConstant("WHITE", "raylib.WHITE")
+  result.mapConstant("GRAY", "raylib.GRAY")
+
   echo "[RaylibPlugin] Plugin created: ", result.info.name, " v", result.info.version
 
 # ------------------------------------------------------------------------------

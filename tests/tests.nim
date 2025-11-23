@@ -687,3 +687,145 @@ var b = func2()
     assert "testInfo" in str
     assert "1.2.3" in str
     assert "Jane Doe" in str
+
+suite "Codegen Tests":
+  test "generate code for simple variable":
+    let code = "var x = 42"
+    let prog = parseDsl(tokenizeDsl(code))
+    let ctx = newCodegenContext()
+    let nimCode = generateNimCode(prog, ctx)
+    assert "var x = 42" in nimCode
+
+  test "generate code for arithmetic":
+    let code = "var result = 10 + 20"
+    let prog = parseDsl(tokenizeDsl(code))
+    let ctx = newCodegenContext()
+    let nimCode = generateNimCode(prog, ctx)
+    assert "var result = (10 + 20)" in nimCode
+
+  test "generate code for if statement":
+    let code = """
+if x > 5:
+  var y = 10
+else:
+  var y = 20
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    let ctx = newCodegenContext()
+    let nimCode = generateNimCode(prog, ctx)
+    assert "if" in nimCode
+    assert "else:" in nimCode
+
+  test "generate code for for loop":
+    let code = """
+for i in range(0, 5):
+  var x = i
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    let ctx = newCodegenContext()
+    let nimCode = generateNimCode(prog, ctx)
+    assert "for i in" in nimCode
+    assert "..<" in nimCode
+
+  test "generate code for function call":
+    let code = "var result = myFunc(10, 20)"
+    let prog = parseDsl(tokenizeDsl(code))
+    let ctx = newCodegenContext()
+    let nimCode = generateNimCode(prog, ctx)
+    assert "myFunc(10, 20)" in nimCode
+
+  test "generate code with function mapping":
+    let code = "var result = sqrt(16.0)"
+    let prog = parseDsl(tokenizeDsl(code))
+    let ctx = newCodegenContext()
+    ctx.addFunctionMapping("sqrt", "math.sqrt")
+    let nimCode = generateNimCode(prog, ctx)
+    assert "math.sqrt(16.0)" in nimCode
+
+  test "generate code with constant mapping":
+    let code = "var area = PI * 2.0"
+    let prog = parseDsl(tokenizeDsl(code))
+    let ctx = newCodegenContext()
+    ctx.addConstantMapping("PI", "math.PI")
+    let nimCode = generateNimCode(prog, ctx)
+    assert "math.PI" in nimCode
+
+  test "generate code with imports":
+    let code = "var x = 42"
+    let prog = parseDsl(tokenizeDsl(code))
+    let ctx = newCodegenContext()
+    ctx.addImport("std/math")
+    ctx.addImport("std/strutils")
+    let nimCode = generateNimCode(prog, ctx)
+    assert "import std/math" in nimCode
+    assert "import std/strutils" in nimCode
+
+  test "plugin codegen integration":
+    let plugin = newPlugin("math", "TestAuthor", "1.0.0", "Math plugin")
+
+    proc sqrtFunc(env: ref Env; args: seq[Value]): Value {.gcsafe.} =
+      return valNil()
+
+    plugin.registerFunc("sqrt", sqrtFunc)
+    plugin.registerConstantFloat("PI", 3.14159)
+
+    # Add codegen mappings
+    plugin.addNimImport("std/math")
+    plugin.mapFunction("sqrt", "sqrt")
+    plugin.mapConstant("PI", "PI")
+
+    # Check that codegen metadata was stored
+    assert plugin.codegen.nimImports.len == 1
+    assert plugin.codegen.nimImports[0] == "std/math"
+    assert "sqrt" in plugin.codegen.functionMappings
+    assert "PI" in plugin.codegen.constantMappings
+
+  test "apply plugin codegen to context":
+    let plugin = newPlugin("math", "TestAuthor", "1.0.0", "Math")
+    plugin.addNimImport("std/math")
+    plugin.mapFunction("pow", "math.pow")
+    plugin.mapConstant("E", "math.E")
+
+    let ctx = newCodegenContext()
+    applyPluginCodegen(plugin, ctx)
+
+    # Check that mappings were applied
+    assert "std/math" in ctx.imports
+    assert ctx.functionMappings["pow"] == "math.pow"
+    assert ctx.constantMappings["E"] == "math.E"
+
+  test "generate code for proc definition":
+    let code = """
+proc double(x: int):
+  return x * 2
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    let ctx = newCodegenContext()
+    let nimCode = generateNimCode(prog, ctx)
+    assert "proc double" in nimCode
+    assert "return" in nimCode
+
+  test "generate code with boolean expressions":
+    let code = """
+var a = true
+var b = false
+var c = a and b
+var d = a or b
+"""
+    let prog = parseDsl(tokenizeDsl(code))
+    let ctx = newCodegenContext()
+    let nimCode = generateNimCode(prog, ctx)
+    assert "true" in nimCode
+    assert "false" in nimCode
+    assert "and" in nimCode
+    assert "or" in nimCode
+
+  test "generate code for nested expressions":
+    let code = "var result = (a + b) * (c - d)"
+    let prog = parseDsl(tokenizeDsl(code))
+    let ctx = newCodegenContext()
+    let nimCode = generateNimCode(prog, ctx)
+    # Check that parentheses are preserved in generated code
+    assert "*" in nimCode
+    assert "+" in nimCode
+    assert "-" in nimCode

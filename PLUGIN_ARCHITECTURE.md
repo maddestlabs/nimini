@@ -354,6 +354,45 @@ If dynamic loading is added:
 - Resource limits
 - Permission system
 
+## Code Generation Support
+
+**NEW**: Plugins now support code generation metadata for transpiling DSL to Nim.
+
+Each plugin can specify:
+- **Nim imports** required when generating code
+- **Function mappings** from DSL names to Nim implementations
+- **Constant mappings** from DSL constants to Nim values
+
+Example:
+```nim
+let plugin = createMathPlugin()
+
+# Runtime registration
+plugin.registerFunc("sqrt", sqrtFunc)
+plugin.registerConstantFloat("PI", 3.14159)
+
+# Codegen registration
+plugin.addNimImport("std/math")
+plugin.mapFunction("sqrt", "sqrt")
+plugin.mapConstant("PI", "PI")
+```
+
+This enables DSL code using plugin functions to be transpiled to native Nim:
+
+```nim
+# DSL code
+var area = PI * radius * radius
+var side = sqrt(area)
+
+# Generated Nim code (with plugin mappings)
+import std/math
+
+var area = (PI * (radius * radius))
+var side = sqrt(area)
+```
+
+See [CODEGEN.md](CODEGEN.md) for complete documentation.
+
 ## Future Enhancements
 
 ### Short Term
@@ -367,12 +406,14 @@ If dynamic loading is added:
 2. Plugin import syntax
 3. Dependency resolution
 4. Plugin versioning system
+5. Enhanced codegen with type hints
 
 ### Long Term
 1. Dynamic plugin loading
 2. Custom AST node support
 3. Plugin marketplace/registry
 4. Hot-reloading for development
+5. Incremental codegen and compilation
 
 ## API Reference
 
@@ -406,6 +447,13 @@ registerNode(plugin: Plugin; name, description: string)
 ```nim
 setOnLoad(plugin: Plugin; hook: proc(ctx: PluginContext): void)
 setOnUnload(plugin: Plugin; hook: proc(ctx: PluginContext): void)
+```
+
+### Codegen Registration
+```nim
+addNimImport(plugin: Plugin; module: string)
+mapFunction(plugin: Plugin; dslName, nimCode: string)
+mapConstant(plugin: Plugin; dslName, nimValue: string)
 ```
 
 ### Registry Management
