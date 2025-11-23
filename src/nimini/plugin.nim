@@ -248,8 +248,7 @@ proc loadAllPlugins*(registry: PluginRegistry; env: ref Env) =
   ## Load all registered plugins in registration order
   for name in registry.loadOrder:
     let plugin = registry.plugins[name]
-    if not plugin.enabled:
-      registry.loadPlugin(plugin, env)
+    registry.loadPlugin(plugin, env)
 
 proc loadAllPlugins*(env: ref Env) =
   ## Load all plugins from the global registry
