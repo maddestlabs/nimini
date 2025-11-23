@@ -292,27 +292,6 @@ proc `$`*(info: PluginInfo): string =
 # Codegen Integration
 # ------------------------------------------------------------------------------
 
-# Note: The codegen module is optional and may not be imported.
-# These procs are forward-declared to allow plugin.nim to provide
-# integration without depending on codegen.nim.
-
-type CodegenContext* = ref object
-  # Placeholder - actual definition is in codegen.nim
-
-proc applyPluginCodegen*(plugin: Plugin; ctx: CodegenContext) =
-  ## Apply plugin codegen metadata to a codegen context
-  ## This is a placeholder that will be implemented when codegen is imported
-  discard
-
-proc applyAllPluginsCodegen*(registry: PluginRegistry; ctx: CodegenContext) =
-  ## Apply all registered plugins' codegen metadata to a context
-  for name in registry.loadOrder:
-    let plugin = registry.plugins[name]
-    if plugin.enabled:
-      applyPluginCodegen(plugin, ctx)
-
-proc applyAllPluginsCodegen*(ctx: CodegenContext) =
-  ## Apply all global plugins' codegen metadata to a context
-  if globalRegistry.isNil:
-    return
-  globalRegistry.applyAllPluginsCodegen(ctx)
+# Note: Codegen integration procs are provided by codegen.nim
+# The plugin module only provides the codegen metadata storage (CodegenMapping)
+# and registration API (addNimImport, mapFunction, mapConstant)
