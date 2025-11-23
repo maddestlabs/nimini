@@ -2,7 +2,7 @@
 ## This shows how to transpile Nimini DSL to native Nim code
 
 import std/math
-import ../src/nimini/[ast, tokenizer, parser, runtime, plugin, codegen]
+import ../src/nimini
 
 # Create a simple math plugin with codegen support
 proc createMathPlugin(): Plugin =
