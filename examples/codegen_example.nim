@@ -5,8 +5,8 @@ import std/math
 import ../src/nimini/[ast, tokenizer, parser, runtime, plugin, codegen]
 
 # Create a simple math plugin with codegen support
-proc createMathPlugin(): plugin.Plugin =
-  result = plugin.newPlugin(
+proc createMathPlugin(): Plugin =
+  result = newPlugin(
     name: "math",
     author: "Nimini Team",
     version: "1.0.0",
