@@ -40,12 +40,12 @@ type
 
 proc `$`*(v: Value): string =
   case v.kind
-  of vkNil: "nil"
-  of vkInt: $v.i
-  of vkFloat: $v.f
-  of vkBool: $v.b
-  of vkString: v.s
-  of vkFunction: "<function>"
+  of vkNil: result = "nil"
+  of vkInt: result = $v.i
+  of vkFloat: result = $v.f
+  of vkBool: result = $v.b
+  of vkString: result = v.s
+  of vkFunction: result = "<function>"
   of vkMap:
     result = "{"
     var first = true
