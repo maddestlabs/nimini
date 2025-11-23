@@ -2,7 +2,7 @@
 
 import unittest
 import sequtils
-import std/tables
+import std/[tables, strutils]
 import ../src/nimini
 
 suite "Tokenizer Tests":
