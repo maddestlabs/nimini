@@ -42,6 +42,26 @@ proc addConstantMapping*(ctx: CodegenContext; dslName, nimCode: string) =
   ## Map a DSL constant name to its Nim value
   ctx.constantMappings[dslName] = nimCode
 
+proc hasImport*(ctx: CodegenContext; module: string): bool =
+  ## Check if an import has been added
+  result = module in ctx.imports
+
+proc hasFunction*(ctx: CodegenContext; dslName: string): bool =
+  ## Check if a function mapping exists
+  result = dslName in ctx.functionMappings
+
+proc getFunctionMapping*(ctx: CodegenContext; dslName: string): string =
+  ## Get the Nim code for a mapped function
+  result = ctx.functionMappings[dslName]
+
+proc hasConstant*(ctx: CodegenContext; dslName: string): bool =
+  ## Check if a constant mapping exists
+  result = dslName in ctx.constantMappings
+
+proc getConstantMapping*(ctx: CodegenContext; dslName: string): string =
+  ## Get the Nim value for a mapped constant
+  result = ctx.constantMappings[dslName]
+
 proc getIndent(ctx: CodegenContext): string =
   ## Get current indentation string
   result = spaces(ctx.indent * 2)
