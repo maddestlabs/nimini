@@ -214,9 +214,9 @@ proc loadPlugin*(registry: PluginRegistry; plugin: Plugin; env: ref Env) =
   if plugin.hooks.onLoad != nil:
     plugin.hooks.onLoad(ctx)
 
-  # Register all functions
+  # Register all functions to the provided environment
   for name, fn in plugin.functions:
-    registerNative(name, fn)
+    defineVar(env, name, valNativeFunc(fn))
 
   # Register all constants
   for name, val in plugin.constants:
