@@ -42,118 +42,77 @@ macro generateRaylibPlugin*(p: var Plugin) =
   stmts.add quote do:
     p.codegen.nimImports.add("raylib")
 
-  # Helper: convert argument from Value → native
-  proc makeArgConv(paramType: NimNode, idx: int): NimNode =
-    let ai = newLit(idx)
-    let argsSym = ident("args")
-    let varName = ident("a" & $idx)
-    case $paramType
-    of "int", "cint":
-      quote do:
-        let `varName` = `argsSym`[`ai`].i.cint
-    of "float32", "float", "cfloat":
-      quote do:
-        let `varName` = float32(`argsSym`[`ai`].f)
-    of "string", "cstring":
-      quote do:
-        let `varName` = `argsSym`[`ai`].s
-    of "bool":
-      quote do:
-        let `varName` = `argsSym`[`ai`].b
-    of "Vector2":
-      quote do:
-        let `varName` = valToVec2(`argsSym`[`ai`])
-    of "Vector3":
-      quote do:
-        let `varName` = valToVec2(`argsSym`[`ai`])  # (you'll want a valToVec3 similar)
-    of "Color":
-      quote do:
-        let `varName` = valToColor(`argsSym`[`ai`])
-    of "Rectangle":
-      # For Rectangle, assuming Value has "x","y","width","height"
-      quote do:
-        let rmap = `argsSym`[`ai`]
-        let `varName` = Rectangle(
-          x: float32(rmap.getByKey("x").f),
-          y: float32(rmap.getByKey("y").f),
-          width: float32(rmap.getByKey("width").f),
-          height: float32(rmap.getByKey("height").f))
-    else:
-      # unsupported, skip
-      newStmtList()
+  # Manually register commonly used raylib functions
+  # You can expand this list as needed for your specific use case
 
-  # Helper: convert native return → Value
-  proc makeReturnConv(paramType: NimNode): NimNode =
-    case $paramType
-    of "void", "":
-      quote do: return valNil()
-    of "int", "cint":
-      quote do: return valInt(int(`result`))
-    of "float32", "cfloat", "float":
-      quote do: return valFloat(float64(`result`))
-    of "bool":
-      quote do: return valBool(`result`)
-    of "Vector2":
-      quote do: return vec2ToVal(`result`)
-    of "Color":
-      quote do: return colorToVal(`result`)
-    of "Rectangle":
-      quote do:
-        let r = `result`
-        var m = newMapValue()
-        m["x"] = valFloat(float64(r.x))
-        m["y"] = valFloat(float64(r.y))
-        m["width"] = valFloat(float64(r.width))
-        m["height"] = valFloat(float64(r.height))
-        return m
-    else:
-      # fallback: nil
-      quote do: return valNil()
+  # --- Window Management ---
+  stmts.add quote do:
+    p.registerFunc("InitWindow", proc (env: ref Env; args: seq[Value]): Value =
+      if args.len >= 3:
+        InitWindow(cint(args[0].i), cint(args[1].i), args[2].s)
+      valNil()
+    )
+    p.codegen.functionMappings["InitWindow"] = "InitWindow"
 
-  # Iterate through raylib module procs
-  let rayMod = getType(raylib)
-  for node in rayMod.getTypeImpl:
-    if node.kind == nnkProcDef:
-      let origName = $node.name
-      let wrapperName = ident("fn" & origName.capitalizeAscii())
-      let params = node.params
-      var convs = newStmtList()
-      var callArgs: seq[NimNode] = @[]
-      var supported = true
-      for i in 1 ..< params.len:
-        let param = params[i]
-        let nm = param[0]
-        let typ = param[1]
-        let conv = makeArgConv(typ, i-1)
-        if conv.kind == nnkEmptyStmtList:
-          supported = false
-          break
-        convs.add(conv)
-        callArgs.add(ident("a" & $(i-1)))
-      if not supported:
-        continue
+    p.registerFunc("CloseWindow", proc (env: ref Env; args: seq[Value]): Value =
+      CloseWindow()
+      valNil()
+    )
+    p.codegen.functionMappings["CloseWindow"] = "CloseWindow"
 
-      # Build call
-      let call = newCall(ident(origName), callArgs)
+    p.registerFunc("WindowShouldClose", proc (env: ref Env; args: seq[Value]): Value =
+      valBool(WindowShouldClose())
+    )
+    p.codegen.functionMappings["WindowShouldClose"] = "WindowShouldClose"
 
-      # Build wrapper
-      let body = quote do:
-        if args.len < `params.len` - 1:
-          echo `origName`, " expects ", `params.len` - 1, " args"
-          return valNil()
-        `convs`
-        let result = `call`
-        `makeReturnConv(params[0])`
+    p.registerFunc("SetTargetFPS", proc (env: ref Env; args: seq[Value]): Value =
+      if args.len >= 1:
+        SetTargetFPS(cint(args[0].i))
+      valNil()
+    )
+    p.codegen.functionMappings["SetTargetFPS"] = "SetTargetFPS"
 
-      let wrapperProc = quote do:
-        proc `wrapperName`(env: ref Env; args: seq[Value]): Value =
-          `body`
+  # --- Drawing ---
+  stmts.add quote do:
+    p.registerFunc("BeginDrawing", proc (env: ref Env; args: seq[Value]): Value =
+      BeginDrawing()
+      valNil()
+    )
+    p.codegen.functionMappings["BeginDrawing"] = "BeginDrawing"
 
-      stmts.add(wrapperProc)
-      stmts.add quote do:
-        p.registerFunc(`origName`, `wrapperName`)
-      stmts.add quote do:
-        p.codegen.functionMappings[`origName`] = `origName`
+    p.registerFunc("EndDrawing", proc (env: ref Env; args: seq[Value]): Value =
+      EndDrawing()
+      valNil()
+    )
+    p.codegen.functionMappings["EndDrawing"] = "EndDrawing"
+
+    p.registerFunc("ClearBackground", proc (env: ref Env; args: seq[Value]): Value =
+      if args.len >= 1:
+        ClearBackground(valToColor(args[0]))
+      valNil()
+    )
+    p.codegen.functionMappings["ClearBackground"] = "ClearBackground"
+
+    p.registerFunc("DrawText", proc (env: ref Env; args: seq[Value]): Value =
+      if args.len >= 5:
+        DrawText(args[0].s, cint(args[1].i), cint(args[2].i), cint(args[3].i), valToColor(args[4]))
+      valNil()
+    )
+    p.codegen.functionMappings["DrawText"] = "DrawText"
+
+    p.registerFunc("DrawRectangle", proc (env: ref Env; args: seq[Value]): Value =
+      if args.len >= 5:
+        DrawRectangle(cint(args[0].i), cint(args[1].i), cint(args[2].i), cint(args[3].i), valToColor(args[4]))
+      valNil()
+    )
+    p.codegen.functionMappings["DrawRectangle"] = "DrawRectangle"
+
+    p.registerFunc("DrawCircle", proc (env: ref Env; args: seq[Value]): Value =
+      if args.len >= 4:
+        DrawCircle(cint(args[0].i), cint(args[1].i), float32(args[2].f), valToColor(args[3]))
+      valNil()
+    )
+    p.codegen.functionMappings["DrawCircle"] = "DrawCircle"
 
   # --- Enums & Constants ---
 
