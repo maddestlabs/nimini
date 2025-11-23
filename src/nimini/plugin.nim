@@ -17,6 +17,12 @@ type
     name*: string
     description*: string
 
+  CodegenMapping* = object
+    ## Codegen metadata for transpiling DSL to Nim
+    nimImports*: seq[string]              # Nim modules to import
+    functionMappings*: Table[string, string]  # DSL func -> Nim code
+    constantMappings*: Table[string, string]  # DSL const -> Nim value
+
   PluginInfo* = object
     ## Plugin metadata
     name*: string
@@ -42,6 +48,7 @@ type
     nodes*: seq[NodeDef]
     hooks*: PluginHooks
     enabled*: bool
+    codegen*: CodegenMapping  # Codegen metadata for transpilation
 
 # ------------------------------------------------------------------------------
 # Plugin Constructors
@@ -63,7 +70,12 @@ proc newPlugin*(name, author, version, description: string): Plugin =
       onLoad: nil,
       onUnload: nil
     ),
-    enabled: true
+    enabled: true,
+    codegen: CodegenMapping(
+      nimImports: @[],
+      functionMappings: initTable[string, string](),
+      constantMappings: initTable[string, string]()
+    )
   )
 
 proc newPluginContext*(env: ref Env): PluginContext =
@@ -112,6 +124,24 @@ proc setOnLoad*(plugin: Plugin; hook: proc(ctx: PluginContext): void) =
 proc setOnUnload*(plugin: Plugin; hook: proc(ctx: PluginContext): void) =
   ## Set the onUnload lifecycle hook
   plugin.hooks.onUnload = hook
+
+# ------------------------------------------------------------------------------
+# Codegen Registration API
+# ------------------------------------------------------------------------------
+
+proc addNimImport*(plugin: Plugin; module: string) =
+  ## Add a Nim import required for codegen
+  plugin.codegen.nimImports.add(module)
+
+proc mapFunction*(plugin: Plugin; dslName, nimCode: string) =
+  ## Map a DSL function to its Nim implementation
+  ## Example: mapFunction("InitWindow", "raylib.InitWindow")
+  plugin.codegen.functionMappings[dslName] = nimCode
+
+proc mapConstant*(plugin: Plugin; dslName, nimValue: string) =
+  ## Map a DSL constant to its Nim value
+  ## Example: mapConstant("RED", "raylib.RED")
+  plugin.codegen.constantMappings[dslName] = nimValue
 
 # ------------------------------------------------------------------------------
 # Plugin Registry
@@ -258,3 +288,32 @@ proc `$`*(info: PluginInfo): string =
   result &= " by " & info.author
   if info.description.len > 0:
     result &= "\n  " & info.description
+
+# ------------------------------------------------------------------------------
+# Codegen Integration
+# ------------------------------------------------------------------------------
+
+# Note: The codegen module is optional and may not be imported.
+# These procs are forward-declared to allow plugin.nim to provide
+# integration without depending on codegen.nim.
+
+type CodegenContext* = ref object
+  # Placeholder - actual definition is in codegen.nim
+
+proc applyPluginCodegen*(plugin: Plugin; ctx: CodegenContext) =
+  ## Apply plugin codegen metadata to a codegen context
+  ## This is a placeholder that will be implemented when codegen is imported
+  discard
+
+proc applyAllPluginsCodegen*(registry: PluginRegistry; ctx: CodegenContext) =
+  ## Apply all registered plugins' codegen metadata to a context
+  for name in registry.loadOrder:
+    let plugin = registry.plugins[name]
+    if plugin.enabled:
+      applyPluginCodegen(plugin, ctx)
+
+proc applyAllPluginsCodegen*(ctx: CodegenContext) =
+  ## Apply all global plugins' codegen metadata to a context
+  if globalRegistry.isNil:
+    return
+  globalRegistry.applyAllPluginsCodegen(ctx)
