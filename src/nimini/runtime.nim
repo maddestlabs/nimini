@@ -1,6 +1,6 @@
 # Clean, strict, Nim compatible runtime for Nimini
 
-import std/[tables, strutils, math]
+import std/[tables, math]
 import ast
 
 # ------------------------------------------------------------------------------
@@ -24,9 +24,6 @@ type
     params*: seq[string]
     stmts*: seq[Stmt]
 
-  # NOTE: no longer a variant (no 'case kind'). All fields always exist.
-  # 'kind' tells us which ones are meaningful, but reading v.f on an int
-  # value is now safe and just uses the synced value we store.
   Value* = ref object
     kind*: ValueKind
     i*: int

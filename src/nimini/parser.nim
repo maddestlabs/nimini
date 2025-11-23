@@ -1,6 +1,6 @@
 # Recursive descent + Pratt parser for Nimini, the mini-Nim DSL
 
-import std/[strutils, sequtils]
+import std/[strutils]
 import tokenizer
 import ast
 

@@ -1,7 +1,5 @@
 # Abstract Syntax Tree for the Nimini, the mini-Nim DSL
 
-import std/[tables, strutils]
-
 # ------------------------------------------------------------------------------
 # Expression AST
 # ------------------------------------------------------------------------------

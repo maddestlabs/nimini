@@ -4,7 +4,7 @@
 import std/tables
 import runtime
 
-export NativeFunc  # Re-export from runtime
+export NativeFunc
 
 # ------------------------------------------------------------------------------
 # Plugin Core Types
@@ -245,13 +245,13 @@ proc unloadPlugin*(registry: PluginRegistry; name: string; env: ref Env) =
   plugin.enabled = false
 
 proc loadAllPlugins*(registry: PluginRegistry; env: ref Env) =
-  ## Load all registered plugins in registration order
+  # Load all registered plugins in registration order
   for name in registry.loadOrder:
     let plugin = registry.plugins[name]
     registry.loadPlugin(plugin, env)
 
 proc loadAllPlugins*(env: ref Env) =
-  ## Load all plugins from the global registry
+  # Load all plugins from the global registry
   if globalRegistry.isNil:
     return
   globalRegistry.loadAllPlugins(env)

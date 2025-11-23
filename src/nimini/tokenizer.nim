@@ -1,7 +1,7 @@
 # dsl_tokenizer.nim
 # Clean, strict-mode-safe tokenizer for the Mini-Nim DSL
 
-import std/[strutils, unicode]
+import std/[strutils]
 
 # ------------------------------------------------------------------------------
 # Token Types
