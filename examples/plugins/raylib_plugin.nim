@@ -141,8 +141,10 @@ macro generateRaylibPlugin*(p: var Plugin) =
   # Example of color constants
   # You could read all color consts, but here is a manual list
   let colorConsts = [
-    "White", "Black", "Red", "Green", "Blue", "Yellow", "Pink", "Orange",
-    "Purple", "RayWhite", "LightGray", "Gray", "DarkGray"
+    "LightGray", "Gray", "DarkGray", "Yellow", "Gold", "Orange", "Pink",
+    "Red", "Maroon", "Green", "Lime", "DarkGreen", "SkyBlue", "Blue",
+    "DarkBlue", "Purple", "Violet", "DarkPurple", "Beige", "Brown",
+    "DarkBrown", "White", "Black", "Blank", "Magenta", "RayWhite",
   ]
   for c in colorConsts:
     let colorIdent = ident(c)
