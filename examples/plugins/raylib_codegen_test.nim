@@ -19,6 +19,14 @@ proc main() =
   let dslCode = """
 var v = vec2(10.0, 20.0)
 var c = color(255, 128, 64, 255)
+initWindow(800, 450, "Raylib test")
+setTargetFPS(60)
+while not windowShouldClose():
+  beginDrawing()
+  clearBackground(White)
+  drawText("Congrats! You created your first window!", 190, 200, 20, Black)
+  endDrawing()
+closeWindow()
 """
 
   echo "DSL Code:"
@@ -46,12 +54,12 @@ var c = color(255, 128, 64, 255)
   # ------------------------------------------------------
   # Execute in DSL runtime
   # ------------------------------------------------------
-  echo "Running in DSL runtime (interpreted):"
-  execProgram(program, runtimeEnv)
-
-  echo "v = ", getVar(runtimeEnv, "v")
-  echo "c = ", getVar(runtimeEnv, "c")
-  echo ""
+  # NOTE: Skipping runtime execution to avoid window creation in headless env
+  # echo "Running in DSL runtime (interpreted):"
+  # execProgram(program, runtimeEnv)
+  # echo "v = ", getVar(runtimeEnv, "v")
+  # echo "c = ", getVar(runtimeEnv, "c")
+  # echo ""
 
   # ------------------------------------------------------
   # Codegen transpilation
@@ -69,27 +77,6 @@ var c = color(255, 128, 64, 255)
 
   echo "You can compile the generated Nim code with:"
   echo "  nim c <file>.nim"
-
-  # ------------------------------------------------------
-  # [Optional] Window test (uncomment to see a Raylib window)
-  # ------------------------------------------------------
-  # echo ""
-  # echo "Starting window test..."
-  # execProgram(parseDsl(tokenizeDsl("""
-  #   InitWindow(800, 450, "Raylib test")
-  #   SetTargetFPS(60)
-  # """)), runtimeEnv)
-  #
-  # while true:
-  #   if WindowShouldClose():
-  #     break
-  #   BeginDrawing()
-  #   ClearBackground(RED)
-  #   DrawText("Hello from Nimini + Raylib!", 100, 100, 24, WHITE)
-  #   EndDrawing()
-  #
-  # execProgram(parseDsl(tokenizeDsl("CloseWindow()")), runtimeEnv)
-  # echo "Window test complete."
 
 when isMainModule:
   main()

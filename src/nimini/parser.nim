@@ -242,6 +242,12 @@ proc parseBlockStmt(p: var Parser): Stmt =
   newBlock(body, tok.line, tok.col)
 
 proc parseStmt(p: var Parser): Stmt =
+  # Skip unexpected indent/dedent tokens to make parser more robust
+  while p.cur().kind == tkIndent or p.cur().kind == tkDedent:
+    discard p.advance()
+    if p.atEnd():
+      quit "Unexpected end of input"
+  
   let t = p.cur()
 
   if t.kind == tkIdent:
@@ -288,6 +294,10 @@ proc parseDsl*(tokens: seq[Token]): Program =
 
   while not p.atEnd():
     if p.cur().kind == tkNewline:
+      discard p.advance()
+      continue
+    # Skip unexpected indent/dedent tokens at top level
+    if p.cur().kind == tkIndent or p.cur().kind == tkDedent:
       discard p.advance()
       continue
     stmts.add(parseStmt(p))
