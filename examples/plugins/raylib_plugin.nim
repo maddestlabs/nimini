@@ -53,20 +53,20 @@ macro generateRaylibPlugin*(p: var Plugin) =
         initWindow(cint(args[0].i), cint(args[1].i), args[2].s)
       valNil()
     )
-    tables.tables.`[]=`(p.codegen.functionMappings, "initWindow", "initWindow")
+    p.codegen.functionMappings["initWindow"] = "initWindow"
 
   stmts.add quote do:
     p.registerFunc("closeWindow", proc (env: ref Env; args: seq[Value]): Value =
       closeWindow()
       valNil()
     )
-    tables.`[]=`(p.codegen.functionMappings, "closeWindow", "closeWindow")
+    p.codegen.functionMappings["closeWindow"] = "closeWindow"
 
   stmts.add quote do:
     p.registerFunc("windowShouldClose", proc (env: ref Env; args: seq[Value]): Value =
       valBool(windowShouldClose())
     )
-    tables.`[]=`(p.codegen.functionMappings, "windowShouldClose", "windowShouldClose")
+    p.codegen.functionMappings["windowShouldClose"] = "windowShouldClose"
 
   stmts.add quote do:
     p.registerFunc("setTargetFPS", proc (env: ref Env; args: seq[Value]): Value =
@@ -74,7 +74,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
         setTargetFPS(cint(args[0].i))
       valNil()
     )
-    tables.`[]=`(p.codegen.functionMappings, "setTargetFPS", "setTargetFPS")
+    p.codegen.functionMappings["setTargetFPS"] = "setTargetFPS"
 
   # --- Drawing ---
   stmts.add quote do:
@@ -82,14 +82,14 @@ macro generateRaylibPlugin*(p: var Plugin) =
       beginDrawing()
       valNil()
     )
-    tables.`[]=`(p.codegen.functionMappings, "beginDrawing", "beginDrawing")
+    p.codegen.functionMappings["beginDrawing"] = "beginDrawing"
 
   stmts.add quote do:
     p.registerFunc("endDrawing", proc (env: ref Env; args: seq[Value]): Value =
       endDrawing()
       valNil()
     )
-    tables.`[]=`(p.codegen.functionMappings, "endDrawing", "endDrawing")
+    p.codegen.functionMappings["endDrawing"] = "endDrawing"
 
   stmts.add quote do:
     p.registerFunc("clearBackground", proc (env: ref Env; args: seq[Value]): Value =
@@ -97,7 +97,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
         clearBackground(valToColor(args[0]))
       valNil()
     )
-    tables.`[]=`(p.codegen.functionMappings, "clearBackground", "clearBackground")
+    p.codegen.functionMappings["clearBackground"] = "clearBackground"
 
   stmts.add quote do:
     p.registerFunc("drawText", proc (env: ref Env; args: seq[Value]): Value =
@@ -105,7 +105,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
         drawText(args[0].s, cint(args[1].i), cint(args[2].i), cint(args[3].i), valToColor(args[4]))
       valNil()
     )
-    tables.`[]=`(p.codegen.functionMappings, "drawText", "drawText")
+    p.codegen.functionMappings["drawText"] = "drawText"
 
   stmts.add quote do:
     p.registerFunc("drawRectangle", proc (env: ref Env; args: seq[Value]): Value =
@@ -113,7 +113,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
         drawRectangle(cint(args[0].i), cint(args[1].i), cint(args[2].i), cint(args[3].i), valToColor(args[4]))
       valNil()
     )
-    tables.`[]=`(p.codegen.functionMappings, "drawRectangle", "drawRectangle")
+    p.codegen.functionMappings["drawRectangle"] = "drawRectangle"
 
   stmts.add quote do:
     p.registerFunc("drawCircle", proc (env: ref Env; args: seq[Value]): Value =
@@ -121,7 +121,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
         drawCircle(cint(args[0].i), cint(args[1].i), float32(args[2].f), valToColor(args[3]))
       valNil()
     )
-    tables.`[]=`(p.codegen.functionMappings, "drawCircle", "drawCircle")
+    p.codegen.functionMappings["drawCircle"] = "drawCircle"
 
   # --- Enums & Constants ---
 
@@ -136,7 +136,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
 
   for e in enumNames:
     stmts.add quote do:
-      tables.`[]=`(p.codegen.functionMappings, `e`, `e`)
+      p.codegen.functionMappings[`e`] = `e`
 
   # Example of color constants
   # You could read all color consts, but here is a manual list
@@ -149,7 +149,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
     stmts.add quote do:
       # runtime constant: wrap as Value map struct
       p.registerConstant(`c`, colorToVal(`colorIdent`))
-      tables.`[]=`(p.codegen.constantMappings, `c`, `c`)
+      p.codegen.constantMappings[`c`] = `c`
 
   result = stmts
 
