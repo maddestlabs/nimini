@@ -373,23 +373,42 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
     noReturn()
 
   of skFor:
-    # Evaluate range bounds in parent scope
-    let startVal = evalExpr(s.forStart, env)
-    let endVal = evalExpr(s.forEnd, env)
-    let startInt = toInt(startVal)
-    let endInt = toInt(endVal)
+    # Evaluate the iterable expression
+    let iterableVal = evalExpr(s.forIterable, env)
+    
+    # For now, we need to handle the iterable as a range-like construct
+    # This is a simplified implementation - a full implementation would need
+    # to support various iterable types
+    if iterableVal.kind == vkInt:
+      # Simple case: iterate from 0 to value-1
+      for i in 0 ..< iterableVal.i:
+        let loopEnv = newEnv(env)
+        defineVar(loopEnv, s.forVar, valInt(i))
+        let res = execBlock(s.forBody, loopEnv)
+        if res.hasReturn:
+          return res
+    else:
+      # For other cases, we could extend this to handle custom iterables
+      # For now, just treat it as an error
+      quit "Runtime Error: Cannot iterate over non-range value in for loop"
 
-    # Loop from start to end-1 (like Python's range)
-    for i in startInt ..< endInt:
-      # Create a new scope for each iteration with the loop variable
-      let loopEnv = newEnv(env)
-      defineVar(loopEnv, s.forVar, valInt(i))
-      # Execute body in loop scope
-      let res = execBlock(s.forBody, loopEnv)
+    noReturn()
+
+  of skWhile:
+    # Execute while loop
+    while true:
+      # Evaluate condition
+      let condVal = evalExpr(s.whileCond, env)
+      if not toBool(condVal):
+        break
+      
+      # Execute body
+      let res = execBlock(s.whileBody, env)
+      
       # If body returns, propagate the return
       if res.hasReturn:
         return res
-
+    
     noReturn()
 
   of skProc:

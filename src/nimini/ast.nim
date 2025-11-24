@@ -48,6 +48,7 @@ type
     skAssign,
     skIf,
     skFor,
+    skWhile,
     skProc,
     skReturn,
     skBlock
@@ -83,9 +84,12 @@ type
 
     of skFor:
       forVar*: string
-      forStart*: Expr
-      forEnd*: Expr
+      forIterable*: Expr  # The expression to iterate over (e.g., 1..5, range(1,10), etc.)
       forBody*: seq[Stmt]
+
+    of skWhile:
+      whileCond*: Expr
+      whileBody*: seq[Stmt]
 
     of skProc:
       procName*: string
@@ -163,12 +167,17 @@ proc addElif*(s: Stmt; cond: Expr; body: seq[Stmt]) =
 proc addElse*(s: Stmt; body: seq[Stmt]) =
   s.elseStmts = body
 
-proc newFor*(varName: string; startExpr, endExpr: Expr; body: seq[Stmt]; line=0; col=0): Stmt =
+proc newFor*(varName: string; iterable: Expr; body: seq[Stmt]; line=0; col=0): Stmt =
   Stmt(kind: skFor,
        forVar: varName,
-       forStart: startExpr,
-       forEnd: endExpr,
+       forIterable: iterable,
        forBody: body,
+       line: line, col: col)
+
+proc newWhile*(cond: Expr; body: seq[Stmt]; line=0; col=0): Stmt =
+  Stmt(kind: skWhile,
+       whileCond: cond,
+       whileBody: body,
        line: line, col: col)
 
 proc newProc*(name: string; params: seq[(string,string)]; body: seq[Stmt]; line=0; col=0): Stmt =

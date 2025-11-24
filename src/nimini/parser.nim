@@ -43,6 +43,7 @@ proc precedence(op: string): int =
   of "or": 1
   of "and": 2
   of "==", "!=", "<", "<=", ">", ">=": 3
+  of "..", "..<": 3  # Range operators at same level as comparison
   of "+", "-": 4
   of "*", "/", "%": 5
   else: 0
@@ -189,24 +190,22 @@ proc parseFor(p: var Parser): Stmt =
     quit "Parse Error: Expected 'in' after for variable at line " & $p.cur().line
   discard p.advance()
 
-  # Expect "range" function call
-  if p.cur().kind != tkIdent or p.cur().lexeme != "range":
-    quit "Parse Error: Expected 'range' after 'in' at line " & $p.cur().line
-  discard p.advance()
+  # Parse the iterable expression (e.g., 1..5, range(1,10), someArray, etc.)
+  let iterableExpr = parseExpr(p)
 
-  discard expect(p, tkLParen, "Expected '(' after 'range'")
-
-  # Parse range arguments (start, end)
-  let startExpr = parseExpr(p)
-  discard expect(p, tkComma, "Expected ',' in range(start, end)")
-  let endExpr = parseExpr(p)
-
-  discard expect(p, tkRParen, "Expected ')' after range arguments")
   discard expect(p, tkColon, "Expected ':'")
   discard expect(p, tkNewline, "Expected newline")
 
   let body = parseBlock(p)
-  newFor(varTok.lexeme, startExpr, endExpr, body, tok.line, tok.col)
+  newFor(varTok.lexeme, iterableExpr, body, tok.line, tok.col)
+
+proc parseWhile(p: var Parser): Stmt =
+  let tok = advance(p)
+  let cond = parseExpr(p)
+  discard expect(p, tkColon, "Expected ':'")
+  discard expect(p, tkNewline, "Expected newline")
+  let body = parseBlock(p)
+  newWhile(cond, body, tok.line, tok.col)
 
 proc parseProc(p: var Parser): Stmt =
   let tok = advance(p)
@@ -251,6 +250,7 @@ proc parseStmt(p: var Parser): Stmt =
     of "let": return parseVarStmt(p, true)
     of "if": return parseIf(p)
     of "for": return parseFor(p)
+    of "while": return parseWhile(p)
     of "proc": return parseProc(p)
     of "return": return parseReturn(p)
     of "block": return parseBlockStmt(p)

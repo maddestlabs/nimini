@@ -196,13 +196,25 @@ proc genStmt*(s: Stmt; ctx: CodegenContext): string =
 
   of skFor:
     var lines: seq[string] = @[]
-    let startExpr = genExpr(s.forStart, ctx)
-    let endExpr = genExpr(s.forEnd, ctx)
+    let iterableExpr = genExpr(s.forIterable, ctx)
 
-    # Nimini uses Python-style range (start ..< end)
-    lines.add(ctx.withIndent("for " & s.forVar & " in " & startExpr & " ..< " & endExpr & ":"))
+    # Generate Nim-style for loop
+    lines.add(ctx.withIndent("for " & s.forVar & " in " & iterableExpr & ":"))
     ctx.indent += 1
     for stmt in s.forBody:
+      lines.add(genStmt(stmt, ctx))
+    ctx.indent -= 1
+
+    result = lines.join("\n")
+
+  of skWhile:
+    var lines: seq[string] = @[]
+    let condExpr = genExpr(s.whileCond, ctx)
+
+    # Generate Nim-style while loop
+    lines.add(ctx.withIndent("while " & condExpr & ":"))
+    ctx.indent += 1
+    for stmt in s.whileBody:
       lines.add(genStmt(stmt, ctx))
     ctx.indent -= 1
 

@@ -192,9 +192,18 @@ proc tokenizeDsl*(src: string): seq[Token] =
       var sawDot = false
 
       inc i; inc col
-      while i < src.len and (src[i].isDigit() or (src[i] == '.' and not sawDot)):
-        if src[i] == '.': sawDot = true
-        inc i; inc col
+      while i < src.len:
+        if src[i].isDigit():
+          inc i; inc col
+        elif src[i] == '.' and not sawDot:
+          # Check if this is a range operator (..) instead of decimal point
+          if i+1 < src.len and src[i+1] == '.':
+            # This is the start of a .. operator, stop parsing number
+            break
+          sawDot = true
+          inc i; inc col
+        else:
+          break
 
       let lex = src[start ..< i]
       if sawDot:
@@ -234,6 +243,18 @@ proc tokenizeDsl*(src: string): seq[Token] =
         addToken(res, tkOp, two, line, startCol)
         inc i, 2
         col += 2
+        continue
+      of "..":
+        # Check for ..< (three-char operator)
+        if i+2 < src.len and src[i+2] == '<':
+          addToken(res, tkOp, "..<", line, startCol)
+          inc i, 3
+          col += 3
+        else:
+          # Just .. operator
+          addToken(res, tkOp, "..", line, startCol)
+          inc i, 2
+          col += 2
         continue
 
     # single-char ops
