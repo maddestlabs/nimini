@@ -137,9 +137,10 @@ macro generateRaylibPlugin*(p: var Plugin) =
     "PURPLE", "RAYWHITE", "LIGHTGRAY", "GRAY", "DARKGRAY"
   ]
   for c in colorConsts:
+    let colorIdent = ident(c)
     stmts.add quote do:
       # runtime constant: wrap as Value map struct
-      p.registerConstant(`c`, colorToVal(`ident(c)`))
+      p.registerConstant(`c`, colorToVal(`colorIdent`))
     stmts.add quote do:
       p.codegen.constantMappings[`c`] = `c`
 
