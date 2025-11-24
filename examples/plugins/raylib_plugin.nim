@@ -1,5 +1,6 @@
 import macros
 import raylib
+import std/tables
 import ../../src/nimini/[runtime, plugin]  # adjust the import to your Nimini runtime/plugin
 
 # Helper converters between Value and raylib structs / enums
@@ -52,20 +53,20 @@ macro generateRaylibPlugin*(p: var Plugin) =
         initWindow(cint(args[0].i), cint(args[1].i), args[2].s)
       valNil()
     )
-    `[]=`(p.codegen.functionMappings, "initWindow", "initWindow")
+    tables.tables.`[]=`(p.codegen.functionMappings, "initWindow", "initWindow")
 
   stmts.add quote do:
     p.registerFunc("closeWindow", proc (env: ref Env; args: seq[Value]): Value =
       closeWindow()
       valNil()
     )
-    `[]=`(p.codegen.functionMappings, "closeWindow", "closeWindow")
+    tables.`[]=`(p.codegen.functionMappings, "closeWindow", "closeWindow")
 
   stmts.add quote do:
     p.registerFunc("windowShouldClose", proc (env: ref Env; args: seq[Value]): Value =
       valBool(windowShouldClose())
     )
-    `[]=`(p.codegen.functionMappings, "windowShouldClose", "windowShouldClose")
+    tables.`[]=`(p.codegen.functionMappings, "windowShouldClose", "windowShouldClose")
 
   stmts.add quote do:
     p.registerFunc("setTargetFPS", proc (env: ref Env; args: seq[Value]): Value =
@@ -73,7 +74,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
         setTargetFPS(cint(args[0].i))
       valNil()
     )
-    `[]=`(p.codegen.functionMappings, "setTargetFPS", "setTargetFPS")
+    tables.`[]=`(p.codegen.functionMappings, "setTargetFPS", "setTargetFPS")
 
   # --- Drawing ---
   stmts.add quote do:
@@ -81,14 +82,14 @@ macro generateRaylibPlugin*(p: var Plugin) =
       beginDrawing()
       valNil()
     )
-    `[]=`(p.codegen.functionMappings, "beginDrawing", "beginDrawing")
+    tables.`[]=`(p.codegen.functionMappings, "beginDrawing", "beginDrawing")
 
   stmts.add quote do:
     p.registerFunc("endDrawing", proc (env: ref Env; args: seq[Value]): Value =
       endDrawing()
       valNil()
     )
-    `[]=`(p.codegen.functionMappings, "endDrawing", "endDrawing")
+    tables.`[]=`(p.codegen.functionMappings, "endDrawing", "endDrawing")
 
   stmts.add quote do:
     p.registerFunc("clearBackground", proc (env: ref Env; args: seq[Value]): Value =
@@ -96,7 +97,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
         clearBackground(valToColor(args[0]))
       valNil()
     )
-    `[]=`(p.codegen.functionMappings, "clearBackground", "clearBackground")
+    tables.`[]=`(p.codegen.functionMappings, "clearBackground", "clearBackground")
 
   stmts.add quote do:
     p.registerFunc("drawText", proc (env: ref Env; args: seq[Value]): Value =
@@ -104,7 +105,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
         drawText(args[0].s, cint(args[1].i), cint(args[2].i), cint(args[3].i), valToColor(args[4]))
       valNil()
     )
-    `[]=`(p.codegen.functionMappings, "drawText", "drawText")
+    tables.`[]=`(p.codegen.functionMappings, "drawText", "drawText")
 
   stmts.add quote do:
     p.registerFunc("drawRectangle", proc (env: ref Env; args: seq[Value]): Value =
@@ -112,7 +113,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
         drawRectangle(cint(args[0].i), cint(args[1].i), cint(args[2].i), cint(args[3].i), valToColor(args[4]))
       valNil()
     )
-    `[]=`(p.codegen.functionMappings, "drawRectangle", "drawRectangle")
+    tables.`[]=`(p.codegen.functionMappings, "drawRectangle", "drawRectangle")
 
   stmts.add quote do:
     p.registerFunc("drawCircle", proc (env: ref Env; args: seq[Value]): Value =
@@ -120,7 +121,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
         drawCircle(cint(args[0].i), cint(args[1].i), float32(args[2].f), valToColor(args[3]))
       valNil()
     )
-    `[]=`(p.codegen.functionMappings, "drawCircle", "drawCircle")
+    tables.`[]=`(p.codegen.functionMappings, "drawCircle", "drawCircle")
 
   # --- Enums & Constants ---
 
@@ -135,7 +136,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
 
   for e in enumNames:
     stmts.add quote do:
-      `[]=`(p.codegen.functionMappings, `e`, `e`)
+      tables.`[]=`(p.codegen.functionMappings, `e`, `e`)
 
   # Example of color constants
   # You could read all color consts, but here is a manual list
@@ -148,7 +149,7 @@ macro generateRaylibPlugin*(p: var Plugin) =
     stmts.add quote do:
       # runtime constant: wrap as Value map struct
       p.registerConstant(`c`, colorToVal(`colorIdent`))
-      `[]=`(p.codegen.constantMappings, `c`, `c`)
+      tables.`[]=`(p.codegen.constantMappings, `c`, `c`)
 
   result = stmts
 
