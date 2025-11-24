@@ -52,24 +52,35 @@ macro generateRaylibPlugin*(p: var Plugin) =
         initWindow(cint(args[0].i), cint(args[1].i), args[2].s)
       valNil()
     )
+
+  stmts.add quote do:
     p.codegen.functionMappings["initWindow"] = "initWindow"
 
+  stmts.add quote do:
     p.registerFunc("closeWindow", proc (env: ref Env; args: seq[Value]): Value =
       closeWindow()
       valNil()
     )
+
+  stmts.add quote do:
     p.codegen.functionMappings["closeWindow"] = "closeWindow"
 
+  stmts.add quote do:
     p.registerFunc("windowShouldClose", proc (env: ref Env; args: seq[Value]): Value =
       valBool(windowShouldClose())
     )
+
+  stmts.add quote do:
     p.codegen.functionMappings["windowShouldClose"] = "windowShouldClose"
 
+  stmts.add quote do:
     p.registerFunc("setTargetFPS", proc (env: ref Env; args: seq[Value]): Value =
       if args.len >= 1:
         setTargetFPS(cint(args[0].i))
       valNil()
     )
+
+  stmts.add quote do:
     p.codegen.functionMappings["setTargetFPS"] = "setTargetFPS"
 
   # --- Drawing ---
@@ -78,40 +89,57 @@ macro generateRaylibPlugin*(p: var Plugin) =
       beginDrawing()
       valNil()
     )
+
+  stmts.add quote do:
     p.codegen.functionMappings["beginDrawing"] = "beginDrawing"
 
+  stmts.add quote do:
     p.registerFunc("endDrawing", proc (env: ref Env; args: seq[Value]): Value =
       endDrawing()
       valNil()
     )
+
+  stmts.add quote do:
     p.codegen.functionMappings["endDrawing"] = "endDrawing"
 
+  stmts.add quote do:
     p.registerFunc("clearBackground", proc (env: ref Env; args: seq[Value]): Value =
       if args.len >= 1:
         clearBackground(valToColor(args[0]))
       valNil()
     )
+
+  stmts.add quote do:
     p.codegen.functionMappings["clearBackground"] = "clearBackground"
 
+  stmts.add quote do:
     p.registerFunc("drawText", proc (env: ref Env; args: seq[Value]): Value =
       if args.len >= 5:
         drawText(args[0].s, cint(args[1].i), cint(args[2].i), cint(args[3].i), valToColor(args[4]))
       valNil()
     )
+
+  stmts.add quote do:
     p.codegen.functionMappings["drawText"] = "drawText"
 
+  stmts.add quote do:
     p.registerFunc("drawRectangle", proc (env: ref Env; args: seq[Value]): Value =
       if args.len >= 5:
         drawRectangle(cint(args[0].i), cint(args[1].i), cint(args[2].i), cint(args[3].i), valToColor(args[4]))
       valNil()
     )
+
+  stmts.add quote do:
     p.codegen.functionMappings["drawRectangle"] = "drawRectangle"
 
+  stmts.add quote do:
     p.registerFunc("drawCircle", proc (env: ref Env; args: seq[Value]): Value =
       if args.len >= 4:
         drawCircle(cint(args[0].i), cint(args[1].i), float32(args[2].f), valToColor(args[3]))
       valNil()
     )
+
+  stmts.add quote do:
     p.codegen.functionMappings["drawCircle"] = "drawCircle"
 
   # --- Enums & Constants ---
