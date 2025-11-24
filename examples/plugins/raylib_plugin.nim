@@ -53,8 +53,10 @@ macro generateRaylibPlugin*(p: var Plugin) =
       valNil()
     )
 
-  stmts.add quote do:
-    p.codegen.functionMappings["initWindow"] = "initWindow"
+  stmts.add newCall(bindSym"[]=",
+    newDotExpr(newDotExpr(ident("p"), ident("codegen")), ident("functionMappings")),
+    newLit("initWindow"),
+    newLit("initWindow"))
 
   stmts.add quote do:
     p.registerFunc("closeWindow", proc (env: ref Env; args: seq[Value]): Value =
@@ -62,16 +64,20 @@ macro generateRaylibPlugin*(p: var Plugin) =
       valNil()
     )
 
-  stmts.add quote do:
-    p.codegen.functionMappings["closeWindow"] = "closeWindow"
+  stmts.add newCall(bindSym"[]=",
+    newDotExpr(newDotExpr(ident("p"), ident("codegen")), ident("functionMappings")),
+    newLit("closeWindow"),
+    newLit("closeWindow"))
 
   stmts.add quote do:
     p.registerFunc("windowShouldClose", proc (env: ref Env; args: seq[Value]): Value =
       valBool(windowShouldClose())
     )
 
-  stmts.add quote do:
-    p.codegen.functionMappings["windowShouldClose"] = "windowShouldClose"
+  stmts.add newCall(bindSym"[]=",
+    newDotExpr(newDotExpr(ident("p"), ident("codegen")), ident("functionMappings")),
+    newLit("windowShouldClose"),
+    newLit("windowShouldClose"))
 
   stmts.add quote do:
     p.registerFunc("setTargetFPS", proc (env: ref Env; args: seq[Value]): Value =
@@ -80,8 +86,10 @@ macro generateRaylibPlugin*(p: var Plugin) =
       valNil()
     )
 
-  stmts.add quote do:
-    p.codegen.functionMappings["setTargetFPS"] = "setTargetFPS"
+  stmts.add newCall(bindSym"[]=",
+    newDotExpr(newDotExpr(ident("p"), ident("codegen")), ident("functionMappings")),
+    newLit("setTargetFPS"),
+    newLit("setTargetFPS"))
 
   # --- Drawing ---
   stmts.add quote do:
@@ -90,8 +98,10 @@ macro generateRaylibPlugin*(p: var Plugin) =
       valNil()
     )
 
-  stmts.add quote do:
-    p.codegen.functionMappings["beginDrawing"] = "beginDrawing"
+  stmts.add newCall(bindSym"[]=",
+    newDotExpr(newDotExpr(ident("p"), ident("codegen")), ident("functionMappings")),
+    newLit("beginDrawing"),
+    newLit("beginDrawing"))
 
   stmts.add quote do:
     p.registerFunc("endDrawing", proc (env: ref Env; args: seq[Value]): Value =
@@ -99,8 +109,10 @@ macro generateRaylibPlugin*(p: var Plugin) =
       valNil()
     )
 
-  stmts.add quote do:
-    p.codegen.functionMappings["endDrawing"] = "endDrawing"
+  stmts.add newCall(bindSym"[]=",
+    newDotExpr(newDotExpr(ident("p"), ident("codegen")), ident("functionMappings")),
+    newLit("endDrawing"),
+    newLit("endDrawing"))
 
   stmts.add quote do:
     p.registerFunc("clearBackground", proc (env: ref Env; args: seq[Value]): Value =
@@ -109,8 +121,10 @@ macro generateRaylibPlugin*(p: var Plugin) =
       valNil()
     )
 
-  stmts.add quote do:
-    p.codegen.functionMappings["clearBackground"] = "clearBackground"
+  stmts.add newCall(bindSym"[]=",
+    newDotExpr(newDotExpr(ident("p"), ident("codegen")), ident("functionMappings")),
+    newLit("clearBackground"),
+    newLit("clearBackground"))
 
   stmts.add quote do:
     p.registerFunc("drawText", proc (env: ref Env; args: seq[Value]): Value =
@@ -119,8 +133,10 @@ macro generateRaylibPlugin*(p: var Plugin) =
       valNil()
     )
 
-  stmts.add quote do:
-    p.codegen.functionMappings["drawText"] = "drawText"
+  stmts.add newCall(bindSym"[]=",
+    newDotExpr(newDotExpr(ident("p"), ident("codegen")), ident("functionMappings")),
+    newLit("drawText"),
+    newLit("drawText"))
 
   stmts.add quote do:
     p.registerFunc("drawRectangle", proc (env: ref Env; args: seq[Value]): Value =
@@ -129,8 +145,10 @@ macro generateRaylibPlugin*(p: var Plugin) =
       valNil()
     )
 
-  stmts.add quote do:
-    p.codegen.functionMappings["drawRectangle"] = "drawRectangle"
+  stmts.add newCall(bindSym"[]=",
+    newDotExpr(newDotExpr(ident("p"), ident("codegen")), ident("functionMappings")),
+    newLit("drawRectangle"),
+    newLit("drawRectangle"))
 
   stmts.add quote do:
     p.registerFunc("drawCircle", proc (env: ref Env; args: seq[Value]): Value =
@@ -139,8 +157,10 @@ macro generateRaylibPlugin*(p: var Plugin) =
       valNil()
     )
 
-  stmts.add quote do:
-    p.codegen.functionMappings["drawCircle"] = "drawCircle"
+  stmts.add newCall(bindSym"[]=",
+    newDotExpr(newDotExpr(ident("p"), ident("codegen")), ident("functionMappings")),
+    newLit("drawCircle"),
+    newLit("drawCircle"))
 
   # --- Enums & Constants ---
 
@@ -154,23 +174,26 @@ macro generateRaylibPlugin*(p: var Plugin) =
   ]
 
   for e in enumNames:
-    stmts.add quote do:
-      # register mapping for codegen
-      p.codegen.functionMappings[e] = e
+    stmts.add newCall(bindSym"[]=",
+      newDotExpr(newDotExpr(ident("p"), ident("codegen")), ident("functionMappings")),
+      newLit(e),
+      newLit(e))
 
   # Example of color constants
   # You could read all color consts, but here is a manual list
   let colorConsts = [
-    "WHITE", "BLACK", "RED", "GREEN", "BLUE", "YELLOW", "PINK", "ORANGE",
-    "PURPLE", "RAYWHITE", "LIGHTGRAY", "GRAY", "DARKGRAY"
+    "White", "Black", "Red", "Green", "Blue", "Yellow", "Pink", "Orange",
+    "Purple", "RayWhite", "LightGray", "Gray", "DarkGray"
   ]
   for c in colorConsts:
     let colorIdent = ident(c)
     stmts.add quote do:
       # runtime constant: wrap as Value map struct
       p.registerConstant(`c`, colorToVal(`colorIdent`))
-    stmts.add quote do:
-      p.codegen.constantMappings[`c`] = `c`
+    stmts.add newCall(bindSym"[]=",
+      newDotExpr(newDotExpr(ident("p"), ident("codegen")), ident("constantMappings")),
+      newLit(c),
+      newLit(c))
 
   result = stmts
 
