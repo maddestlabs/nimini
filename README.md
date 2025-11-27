@@ -1,6 +1,6 @@
 # Nimini (Mini Nim)
 
-Nimini is a lightweight, embeddable scripting language that feels like Nim. Designed for interactive applications, games, and tools that need user-facing scripting without heavy dependencies.
+Nimini is a lightweight, embeddable scripting language built around [Nim](https://nim-lang.org/). Designed for interactive applications, games, and tools that need user-facing scripting without heavy dependencies.
 
 Features:
 - Zero external dependencies (Nim stdlib only)
@@ -10,6 +10,7 @@ Features:
 - Automatic type conversion and error handling
 - Compile-time plugin architecture
 - DSL to Nim code generation (transpilation)
+- Auto-registration to expose procedures with `{.nimini.}` pragma
 
 Nimini trades some expressiveness for simplicity and ease of integration. If you need maximum power, consider Lua. If you want Nim-like familiarity with minimal dependencies, Nimini can help.
 
@@ -37,6 +38,32 @@ execProgram(program, runtimeEnv)
 ```
 
 That's it. Three lines of registration. Your DSL scripts call your Nim code.
+
+## Auto-Registration with `{.nimini.}` Pragma
+
+Even simpler - mark your functions and register them all at once:
+
+```nim
+import nimini
+import nimini/autopragma
+
+# Mark functions with {.nimini.} pragma
+proc hello(env: ref Env; args: seq[Value]): Value {.nimini.} =
+  echo "Hello from DSL!"
+  return valNil()
+
+proc add(env: ref Env; args: seq[Value]): Value {.nimini.} =
+  return valInt(args[0].i + args[1].i)
+
+# Register all marked functions at once
+initRuntime()
+exportNiminiProcs(hello, add)
+
+# Use them in scripts
+execProgram(parseDsl(tokenizeDsl("hello()")), runtimeEnv)
+```
+
+See [AUTOPRAGMA.md](AUTOPRAGMA.md) for full documentation.
 
 ## Getting Started
 
@@ -96,9 +123,9 @@ See [PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md) for details.
 
 Nimini started in a markdown based story telling engine. It was decoupled for use with the terminal version of that same engine, so both engines share the same, core scripting functionality.
 
-One of the larger goals of using Nim for scripting is that Nim's powerful macro system allows for compilation of the same code being used for scripting purposes. So users create apps and games in an engine using Nimini, then they relatively port that same Nim code directly to Nim for native compilation. They get all the speed, power and target platforms of native Nim after using Nim for prototyping.
+One of the larger goals of using Nim for scripting is that Nim's powerful macro system allows for compilation of the same code being used for scripting purposes. So users create apps and games in an engine using Nimini, then they relatively easily port that same Nim code directly to Nim for native compilation. They get all the speed, power and target platforms of native Nim after using Nim for prototyping.
 
-**This is now a reality with Nimini's code generation system.** Write once in Nimini DSL, then:
+**This is becoming a reality with Nimini's code generation system.** Using Nimini:
 1. **Prototype** with interpreted execution (fast iteration)
 2. **Transpile** to Nim code (automated)
 3. **Compile** with Nim (native performance)

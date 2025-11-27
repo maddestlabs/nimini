@@ -2,13 +2,13 @@
 
 ## Overview
 
-Nimini includes a powerful code generation system that transpiles Nimini DSL code to native Nim code. This enables a smooth progression path:
+Nimini includes a work-in-progress code generation system that transpiles Nimini DSL code to native [Nim](https://nim-lang.org/) code. This enables a smooth progression path:
 
 1. **Prototype** with Nimini (interpreted, fast iteration)
 2. **Transpile** to Nim (automated code generation)
 3. **Compile** with Nim (native performance)
 
-This aligns with Nimini's goal of being a "dead simple path to native compilation" as mentioned in the README.
+This aligns with Nimini's goal of being a "dead simple path to native compilation". Nim is a beautiful language built on powerful concepts. We want zero barriers to getting started with it, that's the larger purpose behind Nimini.
 
 ## Architecture
 
