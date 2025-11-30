@@ -46,6 +46,7 @@ proc precedence(op: string): int =
   of "..", "..<": 3  # Range operators at same level as comparison
   of "+", "-": 4
   of "*", "/", "%": 5
+  of "&": 4  # String concatenation at same level as + and -
   else: 0
 
 # forward decl
@@ -98,7 +99,7 @@ proc parsePrefix(p: var Parser): Expr =
       newIdent(t.lexeme, t.line, t.col)
 
   of tkOp:
-    if t.lexeme in ["-"]:
+    if t.lexeme in ["-", "$"]:
       discard p.advance()
       let v = parseExpr(p, 100)
       newUnaryOp(t.lexeme, v, t.line, t.col)
