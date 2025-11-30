@@ -56,7 +56,7 @@ if x > 5:
 
   test "parse for loop":
     let code = """
-for i in range(0, 5):
+for i in 0..5:
   var x = i
 """
     let tokens = tokenizeDsl(code)
@@ -116,7 +116,7 @@ else:
     initRuntime()
     let code = """
 var sum = 0
-for i in range(0, 5):
+for i in 0..<5:
   sum = sum + i
 """
     let prog = parseDsl(tokenizeDsl(code))
@@ -295,7 +295,7 @@ var result2 = x > 10 or y > 5
 suite "For Loop Tests":
   test "parse for loop with range":
     let code = """
-for i in range(0, 5):
+for i in 0..<5:
   var x = i
 """
     let prog = parseDsl(tokenizeDsl(code))
@@ -306,7 +306,7 @@ for i in range(0, 5):
     initRuntime()
     let code = """
 var count = 0
-for i in range(0, 5):
+for i in 0..<5:
   count = count + 1
 """
     let prog = parseDsl(tokenizeDsl(code))
@@ -318,7 +318,7 @@ for i in range(0, 5):
     initRuntime()
     let code = """
 var sum = 0
-for i in range(1, 6):
+for i in 1..5:
   sum = sum + i
 """
     let prog = parseDsl(tokenizeDsl(code))
@@ -330,7 +330,7 @@ for i in range(1, 6):
     initRuntime()
     let code = """
 var product = 1
-for i in range(2, 5):
+for i in 2..4:
   product = product * i
 """
     let prog = parseDsl(tokenizeDsl(code))
@@ -342,8 +342,8 @@ for i in range(2, 5):
     initRuntime()
     let code = """
 var sum = 0
-for i in range(0, 3):
-  for j in range(0, 3):
+for i in 0..<3:
+  for j in 0..<3:
     sum = sum + 1
 """
     let prog = parseDsl(tokenizeDsl(code))
@@ -355,7 +355,7 @@ for i in range(0, 3):
     initRuntime()
     let code = """
 var evenSum = 0
-for i in range(0, 10):
+for i in 0..<10:
   var remainder = i % 2
   if remainder == 0:
     evenSum = evenSum + i
@@ -369,7 +369,7 @@ for i in range(0, 10):
     initRuntime()
     let code = """
 var last = 0
-for i in range(5, 10):
+for i in 5..9:
   last = i
 """
     let prog = parseDsl(tokenizeDsl(code))
@@ -398,7 +398,7 @@ if true:
     initRuntime()
     let code = """
 var sum = 0
-for i in range(0, 5):
+for i in 0..<5:
   var temp = i * 2
   sum = sum + temp
 """
@@ -467,7 +467,7 @@ setX(50)
     initRuntime()
     let code = """
 var i = 999
-for i in range(0, 3):
+for i in 0..<3:
   var x = i
 """
     let prog = parseDsl(tokenizeDsl(code))
@@ -719,7 +719,7 @@ else:
 
   test "generate code for for loop":
     let code = """
-for i in range(0, 5):
+for i in 0..<5:
   var x = i
 """
     let prog = parseDsl(tokenizeDsl(code))

@@ -334,6 +334,21 @@ proc evalExpr(e: Expr; env: ref Env): Value =
     of "<=": valBool(lf <= rf)
     of ">":  valBool(lf >  rf)
     of ">=": valBool(lf >= rf)
+    
+    # Range operators - return a special range value for for-loop iteration
+    of "..", "..<":
+      # For runtime, we'll create a custom value type that represents a range
+      # For simplicity, we'll store it as a map with "start" and "end" keys
+      let rangeMap = initTable[string, Value]()
+      var rangeVal = valMap()
+      rangeVal.map["start"] = valInt(toInt(l))
+      if e.op == "..":
+        rangeVal.map["end"] = valInt(toInt(r))  # Inclusive
+      else:  # ..<
+        rangeVal.map["end"] = valInt(toInt(r) - 1)  # Exclusive, so subtract 1
+      rangeVal.map["is_range"] = valBool(true)
+      rangeVal
+    
     else:
       quit "Unknown binary op: " & e.op
 
@@ -391,11 +406,19 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
     # Evaluate the iterable expression
     let iterableVal = evalExpr(s.forIterable, env)
     
-    # For now, we need to handle the iterable as a range-like construct
-    # This is a simplified implementation - a full implementation would need
-    # to support various iterable types
-    if iterableVal.kind == vkInt:
-      # Simple case: iterate from 0 to value-1
+    # Handle different iterable types
+    if iterableVal.kind == vkMap and "is_range" in iterableVal.map and iterableVal.map["is_range"].b:
+      # Range value created by .. or ..< operators
+      let startVal = toInt(iterableVal.map["start"])
+      let endVal = toInt(iterableVal.map["end"])
+      for i in startVal .. endVal:
+        let loopEnv = newEnv(env)
+        defineVar(loopEnv, s.forVar, valInt(i))
+        let res = execBlock(s.forBody, loopEnv)
+        if res.hasReturn:
+          return res
+    elif iterableVal.kind == vkInt:
+      # Simple case: iterate from 0 to value-1 (backward compatibility)
       for i in 0 ..< iterableVal.i:
         let loopEnv = newEnv(env)
         defineVar(loopEnv, s.forVar, valInt(i))
@@ -404,8 +427,7 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
           return res
     else:
       # For other cases, we could extend this to handle custom iterables
-      # For now, just treat it as an error
-      quit "Runtime Error: Cannot iterate over non-range value in for loop"
+      quit "Runtime Error: Cannot iterate over value in for loop (not a range or integer)"
 
     noReturn()
 
