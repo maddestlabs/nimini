@@ -67,6 +67,12 @@ method generateUnaryOp*(backend: NimBackend; op, operand: string): string =
 method generateCall*(backend: NimBackend; funcName: string; args: seq[string]): string =
   result = funcName & "(" & args.join(", ") & ")"
 
+method generateArray*(backend: NimBackend; elements: seq[string]): string =
+  result = "@[" & elements.join(", ") & "]"
+
+method generateIndex*(backend: NimBackend; target, index: string): string =
+  result = target & "[" & index & "]"
+
 # ------------------------------------------------------------------------------
 # Statement Generation
 # ------------------------------------------------------------------------------

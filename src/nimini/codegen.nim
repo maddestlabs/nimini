@@ -134,6 +134,19 @@ proc genExpr*(e: Expr; ctx: CodegenContext): string =
 
     result = ctx.backend.generateCall(funcCode, argStrs)
 
+  of ekArray:
+    # Generate array literal
+    var elemStrs: seq[string] = @[]
+    for elem in e.elements:
+      elemStrs.add(genExpr(elem, ctx))
+    result = ctx.backend.generateArray(elemStrs)
+
+  of ekIndex:
+    # Generate array indexing
+    let target = genExpr(e.indexTarget, ctx)
+    let index = genExpr(e.indexExpr, ctx)
+    result = ctx.backend.generateIndex(target, index)
+
 # ------------------------------------------------------------------------------
 # Statement Code Generation
 # ------------------------------------------------------------------------------

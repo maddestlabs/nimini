@@ -9,7 +9,9 @@ type
     ekInt, ekFloat, ekString, ekBool,
     ekIdent,
     ekBinOp, ekUnaryOp,
-    ekCall
+    ekCall,
+    ekArray,
+    ekIndex
 
   Expr* = ref object
     line*: int
@@ -35,6 +37,11 @@ type
     of ekCall:
       funcName*: string
       args*: seq[Expr]
+    of ekArray:
+      elements*: seq[Expr]
+    of ekIndex:
+      indexTarget*: Expr
+      indexExpr*: Expr
 
 # ------------------------------------------------------------------------------
 # Statement AST
@@ -139,6 +146,12 @@ proc newUnaryOp*(op: string; e: Expr; line=0; col=0): Expr =
 
 proc newCall*(name: string; args: seq[Expr]; line=0; col=0): Expr =
   Expr(kind: ekCall, funcName: name, args: args, line: line, col: col)
+
+proc newArray*(elements: seq[Expr]; line=0; col=0): Expr =
+  Expr(kind: ekArray, elements: elements, line: line, col: col)
+
+proc newIndex*(target: Expr; index: Expr; line=0; col=0): Expr =
+  Expr(kind: ekIndex, indexTarget: target, indexExpr: index, line: line, col: col)
 
 # --- Statements ---------------------------------------------------------------
 

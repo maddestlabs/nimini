@@ -68,6 +68,12 @@ method generateUnaryOp*(backend: PythonBackend; op, operand: string): string =
 method generateCall*(backend: PythonBackend; funcName: string; args: seq[string]): string =
   result = funcName & "(" & args.join(", ") & ")"
 
+method generateArray*(backend: PythonBackend; elements: seq[string]): string =
+  result = "[" & elements.join(", ") & "]"
+
+method generateIndex*(backend: PythonBackend; target, index: string): string =
+  result = target & "[" & index & "]"
+
 # ------------------------------------------------------------------------------
 # Statement Generation
 # ------------------------------------------------------------------------------

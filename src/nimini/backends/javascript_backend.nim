@@ -68,6 +68,12 @@ method generateUnaryOp*(backend: JavaScriptBackend; op, operand: string): string
 method generateCall*(backend: JavaScriptBackend; funcName: string; args: seq[string]): string =
   result = funcName & "(" & args.join(", ") & ")"
 
+method generateArray*(backend: JavaScriptBackend; elements: seq[string]): string =
+  result = "[" & elements.join(", ") & "]"
+
+method generateIndex*(backend: JavaScriptBackend; target, index: string): string =
+  result = target & "[" & index & "]"
+
 # ------------------------------------------------------------------------------
 # Statement Generation
 # ------------------------------------------------------------------------------

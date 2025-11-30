@@ -15,7 +15,8 @@ type
     vkBool,
     vkString,
     vkFunction,
-    vkMap
+    vkMap,
+    vkArray
 
   NativeFunc* = proc(env: ref Env; args: seq[Value]): Value
 
@@ -33,6 +34,7 @@ type
     s*: string
     fnVal*: FunctionVal
     map*: Table[string, Value]
+    arr*: seq[Value]
 
   Env* = object
     vars*: Table[string, Value]
@@ -46,6 +48,12 @@ proc `$`*(v: Value): string =
   of vkBool: result = $v.b
   of vkString: result = v.s
   of vkFunction: result = "<function>"
+  of vkArray:
+    result = "["
+    for i, elem in v.arr:
+      if i > 0: result.add(", ")
+      result.add($elem)
+    result.add("]")
   of vkMap:
     result = "{"
     var first = true
@@ -175,6 +183,7 @@ proc toBool(v: Value): bool =
   of vkString: v.s.len > 0
   of vkFunction: true
   of vkMap: v.map.len > 0
+  of vkArray: v.arr.len > 0
 
 proc toFloat(v: Value): float =
   case v.kind
@@ -185,6 +194,8 @@ proc toFloat(v: Value): float =
       parseFloat(v.s)
     except:
       quit "Runtime Error: Cannot convert string '" & v.s & "' to float"
+  of vkArray:
+    quit "Runtime Error: Cannot convert array to float"
   else:
     quit "Runtime Error: Expected numeric value, got " & $v.kind & " (value: " & $v & ")"
 
@@ -197,6 +208,8 @@ proc toInt(v: Value): int =
       parseInt(v.s)
     except:
       quit "Runtime Error: Cannot convert string '" & v.s & "' to int"
+  of vkArray:
+    quit "Runtime Error: Cannot convert array to int"
   else:
     quit "Runtime Error: Expected numeric value, got " & $v.kind & " (value: " & $v & ")"
 
@@ -354,6 +367,22 @@ proc evalExpr(e: Expr; env: ref Env): Value =
 
   of ekCall:
     evalCall(e.funcName, e.args, env)
+
+  of ekArray:
+    var elements: seq[Value] = @[]
+    for elem in e.elements:
+      elements.add(evalExpr(elem, env))
+    Value(kind: vkArray, arr: elements)
+
+  of ekIndex:
+    let target = evalExpr(e.indexTarget, env)
+    let index = evalExpr(e.indexExpr, env)
+    if target.kind != vkArray:
+      quit "Cannot index non-array value"
+    let idx = toInt(index)
+    if idx < 0 or idx >= target.arr.len:
+      quit "Index out of bounds: " & $idx & " (array length: " & $target.arr.len & ")"
+    target.arr[idx]
 
 # ------------------------------------------------------------------------------
 # Statement Execution

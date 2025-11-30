@@ -49,6 +49,14 @@ method generateCall*(backend: CodegenBackend; funcName: string; args: seq[string
   ## Generate code for a function call
   quit "generateCall not implemented for backend: " & backend.name
 
+method generateArray*(backend: CodegenBackend; elements: seq[string]): string {.base.} =
+  ## Generate code for an array literal
+  quit "generateArray not implemented for backend: " & backend.name
+
+method generateIndex*(backend: CodegenBackend; target, index: string): string {.base.} =
+  ## Generate code for array indexing
+  quit "generateIndex not implemented for backend: " & backend.name
+
 # ------------------------------------------------------------------------------
 # Statement Generation
 # ------------------------------------------------------------------------------

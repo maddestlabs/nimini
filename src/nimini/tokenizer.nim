@@ -12,6 +12,7 @@ type
     tkInt, tkFloat, tkString,
     tkIdent, tkOp,
     tkLParen, tkRParen,
+    tkLBracket, tkRBracket,
     tkComma, tkColon,
     tkNewline,
     tkIndent, tkDedent,
@@ -147,6 +148,14 @@ proc tokenizeDsl*(src: string): seq[Token] =
       continue
     of ')':
       addToken(res, tkRParen, ")", line, col)
+      inc col; inc i
+      continue
+    of '[':
+      addToken(res, tkLBracket, "[", line, col)
+      inc col; inc i
+      continue
+    of ']':
+      addToken(res, tkRBracket, "]", line, col)
       inc col; inc i
       continue
     of ',':
