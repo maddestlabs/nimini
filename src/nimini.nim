@@ -19,8 +19,9 @@
 ##   # Execute
 ##   execProgram(program, runtimeEnv)
 
-import ../src/nimini/[ast, runtime, tokenizer, plugin, parser, codegen, autopragma, backend]
+import ../src/nimini/[ast, runtime, tokenizer, plugin, parser, codegen, backend]
 import ../src/nimini/backends/[nim_backend, python_backend, javascript_backend]
+import ../src/nimini/lang/[nim_extensions]
 
 # Re-export everything
 export ast
@@ -29,7 +30,7 @@ export parser
 export runtime
 export plugin
 export codegen
-export autopragma
+export nim_extensions  # Nim-specific language extensions (autopragma features)
 export backend
 export nim_backend
 export python_backend

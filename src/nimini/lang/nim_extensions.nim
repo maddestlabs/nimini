@@ -1,10 +1,13 @@
-## Auto-registration of Nim procs to Nimini runtime via {.nimini.} pragma
+## Nim-specific extensions for Nimini runtime
 ##
-## This module provides a convenient way to mark and register Nim procedures
-## for use in the Nimini scripting runtime using the {.nimini.} pragma.
+## This module provides Nim-only features like compile-time pragmas and macros
+## for convenient registration of native functions with the Nimini runtime.
+##
+## These features leverage Nim's metaprogramming capabilities and are only
+## available when using Nim as the host language.
 ##
 ## Usage:
-##   import nimini/autopragma
+##   import nimini/lang/nim_extensions
 ##
 ##   proc myFunc(env: ref Env; args: seq[Value]): Value {.nimini.} =
 ##     # Your implementation
@@ -12,10 +15,10 @@
 ##
 ##   # In your initialization code:
 ##   initRuntime()
-##   registerNimini(myFunc)  # or use the helper macro below
+##   registerNimini(myFunc)  # or use exportNiminiProcs macro
 
 import macros
-import runtime
+import ../runtime
 
 template nimini*() {.pragma.}
   ## Pragma to mark a proc for registration with Nimini runtime.
