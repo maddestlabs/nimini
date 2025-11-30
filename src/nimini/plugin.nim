@@ -17,11 +17,18 @@ type
     name*: string
     description*: string
 
+  BackendMapping* = object
+    ## Mappings for a specific backend
+    imports*: seq[string]
+    functionMappings*: Table[string, string]  # DSL func -> target code
+    constantMappings*: Table[string, string]  # DSL const -> target value
+
   CodegenMapping* = object
-    ## Codegen metadata for transpiling DSL to Nim
-    nimImports*: seq[string]              # Nim modules to import
-    functionMappings*: Table[string, string]  # DSL func -> Nim code
-    constantMappings*: Table[string, string]  # DSL const -> Nim value
+    ## Multi-backend codegen metadata for transpiling DSL to various languages
+    nimImports*: seq[string]              # Nim modules to import (backward compat)
+    functionMappings*: Table[string, string]  # DSL func -> Nim code (backward compat)
+    constantMappings*: Table[string, string]  # DSL const -> Nim value (backward compat)
+    backends*: Table[string, BackendMapping]  # Backend name -> mappings
 
   PluginInfo* = object
     ## Plugin metadata
@@ -74,7 +81,8 @@ proc newPlugin*(name, author, version, description: string): Plugin =
     codegen: CodegenMapping(
       nimImports: @[],
       functionMappings: initTable[string, string](),
-      constantMappings: initTable[string, string]()
+      constantMappings: initTable[string, string](),
+      backends: initTable[string, BackendMapping]()
     )
   )
 
@@ -130,18 +138,79 @@ proc setOnUnload*(plugin: Plugin; hook: proc(ctx: PluginContext): void) =
 # ------------------------------------------------------------------------------
 
 proc addNimImport*(plugin: Plugin; module: string) =
-  ## Add a Nim import required for codegen
+  ## Add a Nim import required for codegen (backward compatible)
   plugin.codegen.nimImports.add(module)
+  # Also add to Nim backend mapping
+  if "Nim" notin plugin.codegen.backends:
+    plugin.codegen.backends["Nim"] = BackendMapping(
+      imports: @[],
+      functionMappings: initTable[string, string](),
+      constantMappings: initTable[string, string]()
+    )
+  plugin.codegen.backends["Nim"].imports.add(module)
 
 proc mapFunction*(plugin: Plugin; dslName, nimCode: string) =
-  ## Map a DSL function to its Nim implementation
+  ## Map a DSL function to its Nim implementation (backward compatible)
   ## Example: mapFunction("InitWindow", "raylib.InitWindow")
   plugin.codegen.functionMappings[dslName] = nimCode
+  # Also add to Nim backend mapping
+  if "Nim" notin plugin.codegen.backends:
+    plugin.codegen.backends["Nim"] = BackendMapping(
+      imports: @[],
+      functionMappings: initTable[string, string](),
+      constantMappings: initTable[string, string]()
+    )
+  plugin.codegen.backends["Nim"].functionMappings[dslName] = nimCode
 
 proc mapConstant*(plugin: Plugin; dslName, nimValue: string) =
-  ## Map a DSL constant to its Nim value
+  ## Map a DSL constant to its Nim value (backward compatible)
   ## Example: mapConstant("RED", "raylib.RED")
   plugin.codegen.constantMappings[dslName] = nimValue
+  # Also add to Nim backend mapping
+  if "Nim" notin plugin.codegen.backends:
+    plugin.codegen.backends["Nim"] = BackendMapping(
+      imports: @[],
+      functionMappings: initTable[string, string](),
+      constantMappings: initTable[string, string]()
+    )
+  plugin.codegen.backends["Nim"].constantMappings[dslName] = nimValue
+
+# ------------------------------------------------------------------------------
+# Multi-Backend Codegen API
+# ------------------------------------------------------------------------------
+
+proc addImportForBackend*(plugin: Plugin; backend, module: string) =
+  ## Add an import for a specific backend
+  ## Example: addImportForBackend("Python", "math")
+  if backend notin plugin.codegen.backends:
+    plugin.codegen.backends[backend] = BackendMapping(
+      imports: @[],
+      functionMappings: initTable[string, string](),
+      constantMappings: initTable[string, string]()
+    )
+  plugin.codegen.backends[backend].imports.add(module)
+
+proc mapFunctionForBackend*(plugin: Plugin; backend, dslName, targetCode: string) =
+  ## Map a DSL function to a backend-specific implementation
+  ## Example: mapFunctionForBackend("Python", "sqrt", "math.sqrt")
+  if backend notin plugin.codegen.backends:
+    plugin.codegen.backends[backend] = BackendMapping(
+      imports: @[],
+      functionMappings: initTable[string, string](),
+      constantMappings: initTable[string, string]()
+    )
+  plugin.codegen.backends[backend].functionMappings[dslName] = targetCode
+
+proc mapConstantForBackend*(plugin: Plugin; backend, dslName, targetValue: string) =
+  ## Map a DSL constant to a backend-specific value
+  ## Example: mapConstantForBackend("Python", "PI", "math.pi")
+  if backend notin plugin.codegen.backends:
+    plugin.codegen.backends[backend] = BackendMapping(
+      imports: @[],
+      functionMappings: initTable[string, string](),
+      constantMappings: initTable[string, string]()
+    )
+  plugin.codegen.backends[backend].constantMappings[dslName] = targetValue
 
 # ------------------------------------------------------------------------------
 # Plugin Registry
