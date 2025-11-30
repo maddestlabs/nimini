@@ -259,7 +259,7 @@ proc tokenizeDsl*(src: string): seq[Token] =
 
     # single-char ops
     case c
-    of '+', '-', '*', '/', '%', '=', '<', '>':
+    of '+', '-', '*', '/', '%', '=', '<', '>', '&', '$':
       addToken(res, tkOp, $c, line, startCol)
       inc i; inc col
       continue

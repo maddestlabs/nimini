@@ -1,6 +1,6 @@
 # Clean, strict, Nim compatible runtime for Nimini
 
-import std/[tables, math]
+import std/[tables, math, strutils]
 import ast
 
 # ------------------------------------------------------------------------------
@@ -180,15 +180,25 @@ proc toFloat(v: Value): float =
   case v.kind
   of vkInt: float(v.i)
   of vkFloat: v.f
+  of vkString:
+    try:
+      parseFloat(v.s)
+    except:
+      quit "Runtime Error: Cannot convert string '" & v.s & "' to float"
   else:
-    quit "Expected numeric value, got " & $v.kind
+    quit "Runtime Error: Expected numeric value, got " & $v.kind & " (value: " & $v & ")"
 
 proc toInt(v: Value): int =
   case v.kind
   of vkInt: v.i
   of vkFloat: int(v.f)
+  of vkString:
+    try:
+      parseInt(v.s)
+    except:
+      quit "Runtime Error: Cannot convert string '" & v.s & "' to int"
   else:
-    quit "Expected numeric value, got " & $v.kind
+    quit "Runtime Error: Expected numeric value, got " & $v.kind & " (value: " & $v & ")"
 
 # ------------------------------------------------------------------------------
 # Return Propagation
@@ -269,6 +279,8 @@ proc evalExpr(e: Expr; env: ref Env): Value =
         valInt(-toInt(v))
     of "not":
       valBool(not toBool(v))
+    of "$":
+      valString($v)
     else:
       quit "Unknown unary op: " & e.unaryOp
 
@@ -312,6 +324,9 @@ proc evalExpr(e: Expr; env: ref Env): Value =
     of "%":
       if bothInts: valInt(l.i mod r.i)
       else: valFloat(lf mod rf)
+    of "&":
+      # String concatenation
+      valString($l & $r)
 
     of "==": valBool(lf == rf)
     of "!=": valBool(lf != rf)
