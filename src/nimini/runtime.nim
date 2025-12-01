@@ -316,37 +316,39 @@ proc evalExpr(e: Expr; env: ref Env): Value =
     let l = evalExpr(e.left, env)
     let r = evalExpr(e.right, env)
 
-    # Check if both operands are integers for arithmetic ops
-    let bothInts = (l.kind == vkInt and r.kind == vkInt)
-    let lf = toFloat(l)
-    let rf = toFloat(r)
-
     case e.op
-    of "+":
-      if bothInts: valInt(l.i + r.i)
-      else: valFloat(lf + rf)
-    of "-":
-      if bothInts: valInt(l.i - r.i)
-      else: valFloat(lf - rf)
-    of "*":
-      if bothInts: valInt(l.i * r.i)
-      else: valFloat(lf * rf)
-    of "/":
-      if bothInts: valInt(l.i div r.i)
-      else: valFloat(lf / rf)
-    of "%":
-      if bothInts: valInt(l.i mod r.i)
-      else: valFloat(lf mod rf)
     of "&":
-      # String concatenation
+      # String concatenation - handle first to avoid converting to float
       valString($l & $r)
+    of "+", "-", "*", "/", "%", "==", "!=", "<", "<=", ">", ">=":
+      # Arithmetic and comparison operators need numeric conversion
+      let bothInts = (l.kind == vkInt and r.kind == vkInt)
+      let lf = toFloat(l)
+      let rf = toFloat(r)
 
-    of "==": valBool(lf == rf)
-    of "!=": valBool(lf != rf)
-    of "<":  valBool(lf <  rf)
-    of "<=": valBool(lf <= rf)
-    of ">":  valBool(lf >  rf)
-    of ">=": valBool(lf >= rf)
+      case e.op
+      of "+":
+        if bothInts: valInt(l.i + r.i)
+        else: valFloat(lf + rf)
+      of "-":
+        if bothInts: valInt(l.i - r.i)
+        else: valFloat(lf - rf)
+      of "*":
+        if bothInts: valInt(l.i * r.i)
+        else: valFloat(lf * rf)
+      of "/":
+        if bothInts: valInt(l.i div r.i)
+        else: valFloat(lf / rf)
+      of "%":
+        if bothInts: valInt(l.i mod r.i)
+        else: valFloat(lf mod rf)
+      of "==": valBool(lf == rf)
+      of "!=": valBool(lf != rf)
+      of "<":  valBool(lf <  rf)
+      of "<=": valBool(lf <= rf)
+      of ">":  valBool(lf >  rf)
+      of ">=": valBool(lf >= rf)
+      else: valNil()  # Should never reach here
     
     # Range operators - return a special range value for for-loop iteration
     of "..", "..<":
