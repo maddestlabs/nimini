@@ -30,12 +30,15 @@
 ##   let program = compileSource(myCode, getNimFrontend())
 
 import ../src/nimini/[ast, runtime, tokenizer, plugin, parser, codegen, backend, frontend]
+
+# backends allow exporting generated code in various languages
 import ../src/nimini/backends/[nim_backend]
 # Uncomment to enable Python backend support:
 # import ../src/nimini/backends/[python_backend]
 # Uncomment to enable JavaScript backend support:
 # import ../src/nimini/backends/[javascript_backend]
 
+# frontends allow scripting in various languages
 import ../src/nimini/frontends/[nim_frontend]
 # Uncomment to enable Python frontend support:
 # import ../src/nimini/frontends/[py_frontend]
@@ -52,12 +55,14 @@ export runtime
 export plugin
 export codegen
 export nim_extensions  # Nim-specific language extensions (autopragma features)
+
 export backend
 export nim_backend
 # Uncomment to export Python backend:
 # export python_backend
 # Uncomment to export JavaScript backend:
 # export javascript_backend
+
 export frontend
 export nim_frontend
 # Uncomment to export Python frontend:
