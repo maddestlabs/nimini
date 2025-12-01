@@ -18,9 +18,30 @@
 ##
 ##   # Execute
 ##   execProgram(program, runtimeEnv)
+##
+## Multi-Language Frontend usage (new):
+##
+##   import nimini
+##
+##   # Auto-detect and compile from any supported language
+##   let program = compileSource(myCode)
+##
+##   # Or specify frontend explicitly
+##   let program = compileSource(myCode, getNimFrontend())
 
-import ../src/nimini/[ast, runtime, tokenizer, plugin, parser, codegen, backend]
-import ../src/nimini/backends/[nim_backend, python_backend, javascript_backend]
+import ../src/nimini/[ast, runtime, tokenizer, plugin, parser, codegen, backend, frontend]
+import ../src/nimini/backends/[nim_backend]
+# Uncomment to enable Python backend support:
+# import ../src/nimini/backends/[python_backend]
+# Uncomment to enable JavaScript backend support:
+# import ../src/nimini/backends/[javascript_backend]
+
+import ../src/nimini/frontends/[nim_frontend]
+# Uncomment to enable Python frontend support:
+# import ../src/nimini/frontends/[py_frontend]
+# Uncomment to enable JavaScript frontend support:
+# import ../src/nimini/frontends/[js_frontend]
+
 import ../src/nimini/lang/[nim_extensions]
 
 # Re-export everything
@@ -33,5 +54,13 @@ export codegen
 export nim_extensions  # Nim-specific language extensions (autopragma features)
 export backend
 export nim_backend
-export python_backend
-export javascript_backend
+# Uncomment to export Python backend:
+# export python_backend
+# Uncomment to export JavaScript backend:
+# export javascript_backend
+export frontend
+export nim_frontend
+# Uncomment to export Python frontend:
+# export py_frontend
+# Uncomment to export JavaScript frontend:
+# export js_frontend

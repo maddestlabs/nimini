@@ -76,29 +76,59 @@ Then in your `.nim` code:
 import nimini
 ```
 
-## Code Generation
+## Multi-Language Support
 
-Nimini now includes a code generation system that transpiles DSL code to native Nim:
+Nimini now supports **multiple input languages** and **multiple output backends**:
+
+### Frontend Support (Input Languages)
+
+Write your code in any supported language:
 
 ```nim
 import nimini
 
-# Your DSL code
-let dslCode = """
-var x = 10
-var y = 20
-var sum = x + y
-"""
+# Option 1: Auto-detect language
+let program = compileSource(myCode)
 
-# Parse and generate Nim code
-let prog = parseDsl(tokenizeDsl(dslCode))
-let nimCode = generateNimCode(prog)
+# Option 2: Explicit frontend
+let program = compileSource(myCode, getNimFrontend())
 
-# Result: Native Nim code ready for compilation
-writeFile("output.nim", nimCode)
+# Option 3: Backward compatible
+let program = parseDsl(tokenizeDsl(myCode))
 ```
 
-See [CODEGEN.md](CODEGEN.md) for comprehensive documentation.
+**Currently supported:**
+- ✅ **Nim** - Full support (default)
+- 🔜 **JavaScript** - Coming soon
+- 🔜 **Python** - Coming soon
+
+See [FRONTEND.md](FRONTEND.md) for details.
+
+### Backend Support (Output Languages)
+
+Generate code for any backend:
+
+```nim
+import nimini
+
+let program = compileSource(dslCode)
+
+# Generate Nim code
+let nimCode = generateCode(program, newNimBackend())
+
+# Generate Python code
+let pythonCode = generateCode(program, newPythonBackend())
+
+# Generate JavaScript code
+let jsCode = generateCode(program, newJavaScriptBackend())
+```
+
+**Cross-language compilation:**
+- Write in Nim → Generate JS, Python, or Nim
+- Write in JS (future) → Generate Nim, Python, or JS
+- Write in Python (future) → Generate Nim, JS, or Python
+
+See [MULTI_BACKEND.md](MULTI_BACKEND.md) for comprehensive documentation.
 
 ## Plugin System
 

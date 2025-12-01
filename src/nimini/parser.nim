@@ -186,12 +186,19 @@ proc parseIf(p: var Parser): Stmt =
   let body = parseBlock(p)
   var node = newIf(cond, body, tok.line, tok.col)
 
+  # Skip newlines before checking for elif
+  while p.cur().kind == tkNewline:
+    discard p.advance()
+  
   while p.cur().kind == tkIdent and p.cur().lexeme == "elif":
     discard p.advance()
     let c = parseExpr(p)
     discard expect(p, tkColon, "Expected ':'")
     discard expect(p, tkNewline, "Expected newline")
     node.addElif(c, parseBlock(p))
+    # Skip newlines before checking for next elif or else
+    while p.cur().kind == tkNewline:
+      discard p.advance()
 
   if p.cur().kind == tkIdent and p.cur().lexeme == "else":
     discard p.advance()
