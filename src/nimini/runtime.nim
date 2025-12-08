@@ -16,7 +16,9 @@ type
     vkString,
     vkFunction,
     vkMap,
-    vkArray
+    vkArray,
+    vkPointer     # Raw pointer value
+
 
   NativeFunc* = proc(env: ref Env; args: seq[Value]): Value
 
@@ -35,10 +37,12 @@ type
     fnVal*: FunctionVal
     map*: Table[string, Value]
     arr*: seq[Value]
+    ptrVal*: pointer  # For pointer values
 
   Env* = object
     vars*: Table[string, Value]
     parent*: ref Env
+    deferStack*: seq[Stmt]  # Stack of deferred statements
 
 proc `$`*(v: Value): string =
   case v.kind
@@ -62,6 +66,7 @@ proc `$`*(v: Value): string =
       result.add(k & ": " & $val)
       first = false
     result.add("}")
+  of vkPointer: result = "<pointer>"
 
 # ------------------------------------------------------------------------------
 # Value Constructors
@@ -96,6 +101,9 @@ proc valString*(s: string): Value =
     s: s,
     fnVal: nil
   )
+
+proc valPointer*(p: pointer): Value =
+  Value(kind: vkPointer, i: 0, f: 0.0, b: (p != nil), s: "", fnVal: nil, ptrVal: p)
 
 proc valNativeFunc*(fn: NativeFunc): Value =
   Value(kind: vkFunction, fnVal: FunctionVal(
@@ -141,6 +149,21 @@ proc getByKey*(v: Value; key: string): Value =
     return v.map[key]
   return valNil()
 
+# Array access operators
+proc `[]`*(v: Value; index: int): Value =
+  if v.kind != vkArray:
+    quit "Runtime Error: Cannot index non-array value"
+  if index < 0 or index >= v.arr.len:
+    quit "Runtime Error: Array index out of bounds: " & $index & " (length: " & $v.arr.len & ")"
+  return v.arr[index]
+
+proc `[]=`*(v: Value; index: int; val: Value) =
+  if v.kind != vkArray:
+    quit "Runtime Error: Cannot set index on non-array value"
+  if index < 0 or index >= v.arr.len:
+    quit "Runtime Error: Array index out of bounds: " & $index & " (length: " & $v.arr.len & ")"
+  v.arr[index] = val
+
 # ------------------------------------------------------------------------------
 # Environment
 # ------------------------------------------------------------------------------
@@ -184,6 +207,7 @@ proc toBool(v: Value): bool =
   of vkFunction: true
   of vkMap: v.map.len > 0
   of vkArray: v.arr.len > 0
+  of vkPointer: v.ptrVal != nil
 
 proc toFloat(v: Value): float =
   case v.kind
@@ -199,7 +223,7 @@ proc toFloat(v: Value): float =
   else:
     quit "Runtime Error: Expected numeric value, got " & $v.kind & " (value: " & $v & ")"
 
-proc toInt(v: Value): int =
+proc toInt*(v: Value): int =
   case v.kind
   of vkInt: v.i
   of vkFloat: int(v.f)
@@ -265,11 +289,21 @@ proc evalCall(name: string; args: seq[Expr]; env: ref Env): Value =
         defineVar(callEnv, pname, valNil())
 
     # Execute body, propagate return
+    var returnValue = valNil()
+    var hasReturnValue = false
     for st in fn.stmts:
       let res = execStmt(st, callEnv)
       if res.hasReturn:
-        return res.value
-
+        returnValue = res.value
+        hasReturnValue = true
+        break
+    
+    # Execute deferred statements in reverse order (LIFO)
+    for i in countdown(callEnv.deferStack.len - 1, 0):
+      discard execStmt(callEnv.deferStack[i], callEnv)
+    
+    if hasReturnValue:
+      return returnValue
     valNil()
 
 # Main evalExpr --------------------------------------------------------
@@ -386,6 +420,24 @@ proc evalExpr(e: Expr; env: ref Env): Value =
       quit "Index out of bounds: " & $idx & " (array length: " & $target.arr.len & ")"
     target.arr[idx]
 
+  of ekCast:
+    # Type casting - for runtime, we'll try to convert the value
+    # In a full implementation, this would do proper type checking
+    let val = evalExpr(e.castExpr, env)
+    # For now, just return the value as-is
+    # A real implementation would check the target type and convert
+    val
+
+  of ekAddr:
+    # Address-of operator - for runtime simulation, return the value
+    # In a real implementation with memory management, this would return a pointer
+    evalExpr(e.addrExpr, env)
+
+  of ekDeref:
+    # Dereference operator - for runtime simulation, just evaluate
+    # In a real implementation, this would dereference a pointer
+    evalExpr(e.derefExpr, env)
+
 # ------------------------------------------------------------------------------
 # Statement Execution
 # ------------------------------------------------------------------------------
@@ -412,8 +464,32 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
     defineVar(env, s.letName, evalExpr(s.letValue, env))
     noReturn()
 
+  of skConst:
+    # Const is treated like let at runtime
+    defineVar(env, s.constName, evalExpr(s.constValue, env))
+    noReturn()
+
   of skAssign:
-    setVar(env, s.target, evalExpr(s.assignValue, env))
+    # Handle assignment to variable or indexed expression
+    let value = evalExpr(s.assignValue, env)
+    case s.assignTarget.kind
+    of ekIdent:
+      # Simple variable assignment
+      setVar(env, s.assignTarget.ident, value)
+    of ekIndex:
+      # Array/sequence index assignment
+      let target = evalExpr(s.assignTarget.indexTarget, env)
+      let indexVal = evalExpr(s.assignTarget.indexExpr, env)
+      case target.kind
+      of vkArray:
+        let idx = toInt(indexVal)
+        if idx < 0 or idx >= target.arr.len:
+          quit "Index out of bounds: " & $idx
+        target.arr[idx] = value
+      else:
+        quit "Cannot index into non-array value"
+    else:
+      quit "Invalid assignment target"
     noReturn()
 
   of skIf:
@@ -493,6 +569,16 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
     # Explicit blocks create their own scope
     let blockEnv = newEnv(env)
     return execBlock(s.stmts, blockEnv)
+
+  of skDefer:
+    # Defer statement - push to defer stack for execution at scope exit
+    env.deferStack.add(s.deferStmt)
+    noReturn()
+
+  of skType:
+    # Type definition - for runtime, we just store it as metadata
+    # In a real implementation, this would register the type in a type system
+    noReturn()
 
 # ------------------------------------------------------------------------------
 # Program Execution

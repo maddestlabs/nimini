@@ -4,7 +4,13 @@ author        = "Maddest Labs"
 description   = "Nimini - Lightweight Nim-inspired DSL for interactive applications"
 license       = "MIT"
 srcDir        = "src"
-skipDirs      = @["tests", "examples"]
+installDirs   = @["nimini"]
+installFiles  = @["nimini.nim"]
+skipDirs      = @["tests", "examples", "docs"]
+skipFiles     = @["config.nims"]
+
+# Metadata for official Nimble directory
+url           = "https://github.com/maddestlabs/nimini"
 
 # Dependencies
 requires "nim >= 1.6.0"
@@ -45,3 +51,6 @@ task clean, "Clean build artifacts":
   exec "find . -name 'nimini' -type f -delete"
   exec "find examples -type f ! -name '*.nim' ! -name 'README.md' -delete"
   exec "find tests -type f ! -name '*.nim' -delete"
+
+task uninstall_clean, "Force clean nimble cache for this package":
+  echo "This will remove nimini from nimble cache. Run: nimble uninstall nimini -y && rm -rf ~/.nimble/pkgs/nimini-*"

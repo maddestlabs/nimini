@@ -11,6 +11,35 @@ export backend
 export nim_backend
 
 # ------------------------------------------------------------------------------
+# Type Helpers
+# ------------------------------------------------------------------------------
+
+proc typeToString*(t: TypeNode): string =
+  ## Convert a type node to its string representation
+  if t.isNil:
+    return ""
+  
+  case t.kind
+  of tkSimple:
+    return t.typeName
+  of tkPointer:
+    return "ptr " & typeToString(t.ptrType)
+  of tkGeneric:
+    result = t.genericName & "["
+    for i, param in t.genericParams:
+      if i > 0: result.add(", ")
+      result.add(typeToString(param))
+    result.add("]")
+  of tkProc:
+    result = "proc("
+    for i, param in t.procParams:
+      if i > 0: result.add(", ")
+      result.add(typeToString(param))
+    result.add(")")
+    if not t.procReturn.isNil:
+      result.add(": " & typeToString(t.procReturn))
+
+# ------------------------------------------------------------------------------
 # Codegen Context
 # ------------------------------------------------------------------------------
 
@@ -147,6 +176,22 @@ proc genExpr*(e: Expr; ctx: CodegenContext): string =
     let index = genExpr(e.indexExpr, ctx)
     result = ctx.backend.generateIndex(target, index)
 
+  of ekCast:
+    # Generate cast[Type](expr)
+    let typeName = typeToString(e.castType)
+    let expr = genExpr(e.castExpr, ctx)
+    result = "cast[" & typeName & "](" & expr & ")"
+
+  of ekAddr:
+    # Generate addr expr
+    let expr = genExpr(e.addrExpr, ctx)
+    result = "addr " & expr
+
+  of ekDeref:
+    # Generate expr[]
+    let expr = genExpr(e.derefExpr, ctx)
+    result = expr & "[]"
+
 # ------------------------------------------------------------------------------
 # Statement Code Generation
 # ------------------------------------------------------------------------------
@@ -162,15 +207,29 @@ proc genStmt*(s: Stmt; ctx: CodegenContext): string =
 
   of skVar:
     let value = genExpr(s.varValue, ctx)
+    let typeStr = if s.varType.isNil: "" else: typeToString(s.varType)
     result = ctx.backend.generateVarDecl(s.varName, value, ctx.getIndent())
+    if typeStr.len > 0:
+      # Add type annotation if present
+      result = ctx.getIndent() & "var " & s.varName & ": " & typeStr & " = " & value
 
   of skLet:
     let value = genExpr(s.letValue, ctx)
+    let typeStr = if s.letType.isNil: "" else: typeToString(s.letType)
     result = ctx.backend.generateLetDecl(s.letName, value, ctx.getIndent())
+    if typeStr.len > 0:
+      # Add type annotation if present
+      result = ctx.getIndent() & "let " & s.letName & ": " & typeStr & " = " & value
+
+  of skConst:
+    let value = genExpr(s.constValue, ctx)
+    let typeStr = if s.constType.isNil: "" else: ": " & typeToString(s.constType)
+    result = ctx.getIndent() & "const " & s.constName & typeStr & " = " & value
 
   of skAssign:
     let value = genExpr(s.assignValue, ctx)
-    result = ctx.backend.generateAssignment(s.target, value, ctx.getIndent())
+    let target = genExpr(s.assignTarget, ctx)
+    result = ctx.backend.generateAssignment(target, value, ctx.getIndent())
 
   of skIf:
     var lines: seq[string] = @[]
@@ -280,8 +339,20 @@ proc genStmt*(s: Stmt; ctx: CodegenContext): string =
       lines.add(genStmt(stmt, ctx))
     ctx.indent -= 1
     if not ctx.backend.usesIndentation:
-      lines.add(ctx.backend.generateBlockEnd(ctx.getIndent()))
+      lines.add(ctx.withIndent("}"))
     result = lines.join("\n")
+
+  of skDefer:
+    # Generate defer statement
+    result = ctx.withIndent("defer:")
+    ctx.indent += 1
+    result.add("\n" & genStmt(s.deferStmt, ctx))
+    ctx.indent -= 1
+
+  of skType:
+    # Generate type definition
+    let typeStr = typeToString(s.typeValue)
+    result = ctx.withIndent("type " & s.typeName & " = " & typeStr)
 
 proc genBlock*(stmts: seq[Stmt]; ctx: CodegenContext): string =
   ## Generate code for a sequence of statements
