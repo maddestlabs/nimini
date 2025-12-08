@@ -9,9 +9,6 @@ installFiles  = @["nimini.nim"]
 skipDirs      = @["tests", "examples", "docs"]
 skipFiles     = @["config.nims"]
 
-# Metadata for official Nimble directory
-url           = "https://github.com/maddestlabs/nimini"
-
 # Dependencies
 requires "nim >= 1.6.0"
 
