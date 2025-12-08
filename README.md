@@ -14,6 +14,13 @@ Features:
 
 Nimini trades some expressiveness for simplicity and ease of integration. If you need maximum power, consider Lua. If you want Nim-like familiarity with minimal dependencies, Nimini can help.
 
+## Quick Start
+
+Easiest way to get started, with AI assistance from Claude:
+https://claude.ai/share/9db417e6-e697-4995-920f-3192639c598a
+
+Alternatively, provide any AI tool with this [AI QUICKSTART](https://github.com/maddestlabs/nimini/blob/main/docs/AI_QUICKSTART.md).
+
 ## Quick Example
 
 ```nim
