@@ -164,8 +164,37 @@ proc parsePrefix(p: var Parser): Expr =
     discard expect(p, tkRBracket, "Expected ']'")
     newArray(elements, t.line, t.col)
 
+  of tkLBrace:
+    # Parse map literal {key: value, key2: value2, ...}
+    discard p.advance()
+    var pairs: seq[tuple[key: string, value: Expr]] = @[]
+    if p.cur().kind != tkRBrace:
+      # Parse first key-value pair
+      if p.cur().kind != tkIdent and p.cur().kind != tkString:
+        quit "Map literal keys must be identifiers or strings at line " & $t.line
+      let key = p.cur().lexeme
+      discard p.advance()
+      discard expect(p, tkColon, "Expected ':' after map key")
+      let value = parseExpr(p)
+      pairs.add((key, value))
+      
+      # Parse remaining pairs
+      while match(p, tkComma):
+        if p.cur().kind == tkRBrace:
+          break  # Allow trailing comma
+        if p.cur().kind != tkIdent and p.cur().kind != tkString:
+          quit "Map literal keys must be identifiers or strings at line " & $p.cur().line
+        let pairKey = p.cur().lexeme
+        discard p.advance()
+        discard expect(p, tkColon, "Expected ':' after map key")
+        let pairValue = parseExpr(p)
+        pairs.add((pairKey, pairValue))
+    
+    discard expect(p, tkRBrace, "Expected '}'")
+    newMap(pairs, t.line, t.col)
+
   else:
-    quit "Unexpected token in expression at line " & $t.line
+    quit "Unexpected token in expression at line" & $t.line
 
 # Pratt led -------------------------------------------------------------
 

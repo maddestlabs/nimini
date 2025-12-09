@@ -35,6 +35,7 @@ type
     ekBinOp, ekUnaryOp,
     ekCall,
     ekArray,
+    ekMap,         # Map literal {key: value, ...}
     ekIndex,
     ekCast,        # cast[Type](expr)
     ekAddr,        # addr expr
@@ -66,6 +67,8 @@ type
       args*: seq[Expr]
     of ekArray:
       elements*: seq[Expr]
+    of ekMap:
+      mapPairs*: seq[tuple[key: string, value: Expr]]
     of ekIndex:
       indexTarget*: Expr
       indexExpr*: Expr
@@ -202,6 +205,9 @@ proc newCall*(name: string; args: seq[Expr]; line=0; col=0): Expr =
 
 proc newArray*(elements: seq[Expr]; line=0; col=0): Expr =
   Expr(kind: ekArray, elements: elements, line: line, col: col)
+
+proc newMap*(pairs: seq[tuple[key: string, value: Expr]]; line=0; col=0): Expr =
+  Expr(kind: ekMap, mapPairs: pairs, line: line, col: col)
 
 proc newIndex*(target: Expr; index: Expr; line=0; col=0): Expr =
   Expr(kind: ekIndex, indexTarget: target, indexExpr: index, line: line, col: col)

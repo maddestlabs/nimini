@@ -410,15 +410,31 @@ proc evalExpr(e: Expr; env: ref Env): Value =
       elements.add(evalExpr(elem, env))
     Value(kind: vkArray, arr: elements)
 
+  of ekMap:
+    var mapTable = initTable[string, Value]()
+    for pair in e.mapPairs:
+      mapTable[pair.key] = evalExpr(pair.value, env)
+    Value(kind: vkMap, map: mapTable)
+
   of ekIndex:
     let target = evalExpr(e.indexTarget, env)
     let index = evalExpr(e.indexExpr, env)
-    if target.kind != vkArray:
-      quit "Cannot index non-array value"
-    let idx = toInt(index)
-    if idx < 0 or idx >= target.arr.len:
-      quit "Index out of bounds: " & $idx & " (array length: " & $target.arr.len & ")"
-    target.arr[idx]
+    
+    case target.kind
+    of vkArray:
+      let idx = toInt(index)
+      if idx < 0 or idx >= target.arr.len:
+        quit "Index out of bounds: " & $idx & " (array length: " & $target.arr.len & ")"
+      target.arr[idx]
+    of vkMap:
+      if index.kind != vkString:
+        quit "Map keys must be strings, got: " & $index.kind
+      if index.s in target.map:
+        target.map[index.s]
+      else:
+        valNil()  # Return nil for missing keys
+    else:
+      quit "Cannot index value of type: " & $target.kind
 
   of ekCast:
     # Type casting - for runtime, we'll try to convert the value
