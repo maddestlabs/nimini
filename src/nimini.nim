@@ -58,6 +58,16 @@ export codegen
 export nim_extensions  # Nim-specific language extensions (autopragma features)
 export seqops
 
+# Initialize standard library - must be called after initRuntime()
+proc initStdlib*() =
+  ## Register standard library functions with the runtime
+  registerNative("add", niminiAdd)
+  registerNative("len", niminiLen)
+  registerNative("newSeq", niminiNewSeq)
+  registerNative("setLen", niminiSetLen)
+  registerNative("delete", niminiDelete)
+  registerNative("insert", niminiInsert)
+
 export backend
 export nim_backend
 # Uncomment to export Python backend:

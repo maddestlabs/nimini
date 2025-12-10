@@ -170,6 +170,17 @@ proc genExpr*(e: Expr; ctx: CodegenContext): string =
       elemStrs.add(genExpr(elem, ctx))
     result = ctx.backend.generateArray(elemStrs)
 
+  of ekMap:
+    # Generate map literal as Nim table
+    result = "{" 
+    var pairs: seq[string] = @[]
+    for pair in e.mapPairs:
+      let key = ctx.backend.generateString(pair.key)
+      let value = genExpr(pair.value, ctx)
+      pairs.add(key & ": " & value)
+    result &= pairs.join(", ")
+    result &= "}.toTable"
+
   of ekIndex:
     # Generate array indexing
     let target = genExpr(e.indexTarget, ctx)

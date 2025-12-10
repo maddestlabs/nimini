@@ -354,16 +354,25 @@ proc evalExpr(e: Expr; env: ref Env): Value =
     of "&":
       # String concatenation - handle first to avoid converting to float
       valString($l & $r)
-    of "+", "-", "*", "/", "%", "==", "!=", "<", "<=", ">", ">=":
+    of "+":
+      # Handle different types for + operator
+      if l.kind == vkArray and r.kind == vkArray:
+        # Array concatenation
+        var result = l.arr
+        result.add(r.arr)
+        Value(kind: vkArray, arr: result)
+      elif l.kind == vkInt and r.kind == vkInt:
+        valInt(l.i + r.i)
+      else:
+        # Numeric addition
+        valFloat(toFloat(l) + toFloat(r))
+    of "-", "*", "/", "%", "==", "!=", "<", "<=", ">", ">=":
       # Arithmetic and comparison operators need numeric conversion
       let bothInts = (l.kind == vkInt and r.kind == vkInt)
       let lf = toFloat(l)
       let rf = toFloat(r)
 
       case e.op
-      of "+":
-        if bothInts: valInt(l.i + r.i)
-        else: valFloat(lf + rf)
       of "-":
         if bothInts: valInt(l.i - r.i)
         else: valFloat(lf - rf)
@@ -433,6 +442,11 @@ proc evalExpr(e: Expr; env: ref Env): Value =
         target.map[index.s]
       else:
         valNil()  # Return nil for missing keys
+    of vkString:
+      let idx = toInt(index)
+      if idx < 0 or idx >= target.s.len:
+        quit "String index out of bounds: " & $idx & " (string length: " & $target.s.len & ")"
+      valString($target.s[idx])
     else:
       quit "Cannot index value of type: " & $target.kind
 
@@ -493,7 +507,7 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
       # Simple variable assignment
       setVar(env, s.assignTarget.ident, value)
     of ekIndex:
-      # Array/sequence index assignment
+      # Array/map index assignment
       let target = evalExpr(s.assignTarget.indexTarget, env)
       let indexVal = evalExpr(s.assignTarget.indexExpr, env)
       case target.kind
@@ -502,8 +516,12 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
         if idx < 0 or idx >= target.arr.len:
           quit "Index out of bounds: " & $idx
         target.arr[idx] = value
+      of vkMap:
+        if indexVal.kind != vkString:
+          quit "Map keys must be strings"
+        target.map[indexVal.s] = value
       else:
-        quit "Cannot index into non-array value"
+        quit "Cannot index into non-array/map value"
     else:
       quit "Invalid assignment target"
     noReturn()
@@ -602,19 +620,36 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
 
 var runtimeEnv*: ref Env
 
-proc initRuntime*() =
-  runtimeEnv = newEnv(nil)
-  # Note: Plugin system is initialized on-demand in plugin.nim
-
-proc execProgram*(prog: Program; env: ref Env) =
-  discard execBlock(prog.stmts, env)
-
 # ------------------------------------------------------------------------------
 # Native Function Registration / Globals
 # ------------------------------------------------------------------------------
 
 proc registerNative*(name: string; fn: NativeFunc) =
   defineVar(runtimeEnv, name, valNativeFunc(fn))
+
+proc initRuntime*() =
+  runtimeEnv = newEnv(nil)
+  # Note: Plugin system is initialized on-demand in plugin.nim
+  # Note: Standard library functions are registered separately via initStdlib()
+  
+  # Register built-in print/echo functions
+  registerNative("echo", proc(env: ref Env; args: seq[Value]): Value =
+    for i, arg in args:
+      if i > 0: stdout.write(" ")
+      stdout.write($arg)
+    stdout.write("\n")
+    valNil()
+  )
+  registerNative("print", proc(env: ref Env; args: seq[Value]): Value =
+    for i, arg in args:
+      if i > 0: stdout.write(" ")
+      stdout.write($arg)
+    stdout.write("\n")
+    valNil()
+  )
+
+proc execProgram*(prog: Program; env: ref Env) =
+  discard execBlock(prog.stmts, env)
 
 proc setGlobal*(name: string; v: Value) =
   defineVar(runtimeEnv, name, v)
