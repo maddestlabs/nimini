@@ -33,8 +33,8 @@ Nimini trades some expressiveness for simplicity and ease of integration. Key de
 ### 2. Multi-Frontend Support (Input Languages)
 Nimini can accept code written in different languages:
 - ✅ **Nim** - Full support (default, native)
-- 🚧 **JavaScript** - In development
-- 🚧 **Python** - In development
+- 🚧 **JavaScript** - Stub implementation (planned)
+- 🚧 **Python** - Stub implementation (planned)
 
 All frontends compile to a universal AST, enabling cross-language features.
 
@@ -55,14 +55,26 @@ proc myFunc(env: ref Env; args: seq[Value]): Value {.nimini.} =
 exportNiminiProcs(myFunc)  # Auto-registers all marked functions
 ```
 
-### 5. Plugin System
-Extend Nimini with reusable plugins that provide:
-- Runtime functions
-- Constants
-- Codegen mappings (for transpilation)
-- Import declarations
+### 5. Codegen Extension System
+Extend code generation with reusable extensions that map functions across backends:
+- Runtime function registration via autopragma
+- Multi-backend codegen mappings (Nim, Python, JavaScript)
+- Import declarations per backend
+- Constant mappings across languages
 
-### 6. Code Generation (Transpilation)
+### 6. Advanced Language Features
+- **Lambda expressions** with closure support
+- **Tuples** (named and unnamed) with unpacking
+- **Object types** with field access and construction
+- **Enum types** with ordinal values
+- **Case statements** with multiple values and elif branches
+- **Type suffixes** on numeric literals (`'i32`, `'f64`, `'u8`, etc.)
+- **String operations** (slicing, methods, interpolation with `$`)
+- **Advanced loops** with labels, break/continue, multi-variable iteration
+- **Defer statements** for cleanup code
+- **Var parameters** for pass-by-reference
+
+### 7. Code Generation (Transpilation)
 Convert Nimini AST to native code in various languages for performance.
 
 ## Architecture Overview
@@ -138,11 +150,17 @@ Convert Nimini AST to native code in various languages for performance.
 7. **`codegen.nim`** - Code generation orchestration
    - `generateCode()` - Generate code from AST using a backend
 
-8. **`plugin.nim`** - Plugin system
-   - `Plugin` - Plugin type
-   - `newPlugin()` - Create plugin
-   - `registerFunc()` - Add runtime function
-   - `mapFunction()` - Add codegen mapping
+8. **`codegen_ext.nim`** - Codegen extension system
+   - `CodegenExtension` - Extension type for cross-backend mappings
+   - `newCodegenExtension()` - Create extension
+   - `addImport()` - Add backend-specific import
+   - `mapFunction()` - Map function across backends
+   - `mapConstant()` - Map constant across backends
+   - `registerExtension()` - Register extension globally
+
+9. **`import_analyzer.nim`** - Import analysis for target libraries
+   - `FunctionMetadata` - Function metadata registry
+   - `generateImportList()` - Generate required imports
 
 ### Frontend Implementations
 
@@ -159,11 +177,19 @@ Convert Nimini AST to native code in various languages for performance.
 ### Language Extensions
 
 - **`lang/nim_extensions.nim`** - Nim-specific features
-- **`autopragma`** - Automatic function registration with `{.nimini.}` pragma
+  - `nimini` pragma for auto-registration
+  - `exportNiminiProcs()` macro for batch registration
+  - `registerNimini()` helper functions
 
 ### Standard Library
 
 - **`stdlib/seqops.nim`** - Sequence/array operations
+  - `niminiAdd()` - Add element to sequence
+  - `niminiLen()` - Get length
+  - `niminiNewSeq()` - Create new sequence
+  - `niminiSetLen()` - Set sequence length
+  - `niminiDelete()` - Delete element
+  - `niminiInsert()` - Insert element
 
 ## Common Use Cases & Code Examples
 
@@ -232,29 +258,50 @@ let pythonCode = generateCode(program, newPythonBackend())
 let jsCode = generateCode(program, newJavaScriptBackend())
 ```
 
-### 5. Plugin System
+### 5. Codegen Extension System
 
 ```nim
 import nimini
 import std/math
 
-let mathPlugin = newPlugin("math", "Author", "1.0.0", "Math utilities")
-
-# Runtime function
-proc sqrtFunc(env: ref Env; args: seq[Value]): Value {.gcsafe.} =
+# Define runtime functions with autopragma
+proc sqrt(env: ref Env; args: seq[Value]): Value {.nimini.} =
   return valFloat(sqrt(args[0].f))
 
-mathPlugin.registerFunc("sqrt", sqrtFunc)
-mathPlugin.registerConstantFloat("PI", 3.14159)
+proc pow(env: ref Env; args: seq[Value]): Value {.nimini.} =
+  return valFloat(pow(args[0].f, args[1].f))
 
-# Codegen support
-mathPlugin.addNimImport("std/math")
-mathPlugin.mapFunction("sqrt", "sqrt")
-mathPlugin.mapConstant("PI", "PI")
-
-# Load plugin
+# Initialize runtime
 initRuntime()
-loadPlugin(mathPlugin, runtimeEnv)
+exportNiminiProcs(sqrt, pow)
+defineVar(runtimeEnv, "PI", valFloat(3.14159))
+
+# Create codegen extension for transpilation
+let mathExt = newCodegenExtension("math")
+
+# Nim backend mappings
+mathExt.addNimImport("std/math")
+mathExt.mapNimFunction("sqrt", "sqrt")
+mathExt.mapNimFunction("pow", "pow")
+mathExt.mapNimConstant("PI", "PI")
+
+# Python backend mappings
+mathExt.addImport("Python", "math")
+mathExt.mapFunction("Python", "sqrt", "math.sqrt")
+mathExt.mapFunction("Python", "pow", "math.pow")
+mathExt.mapConstant("Python", "PI", "math.pi")
+
+# JavaScript backend mappings
+mathExt.mapFunction("JavaScript", "sqrt", "Math.sqrt")
+mathExt.mapFunction("JavaScript", "pow", "Math.pow")
+mathExt.mapConstant("JavaScript", "PI", "Math.PI")
+
+# Register extension
+registerExtension(mathExt)
+
+# Now you can transpile code using these functions
+let program = compileSource("var x = sqrt(PI)")
+echo generateCode(program, newPythonBackend())
 ```
 
 ## Native Function Signature
@@ -351,6 +398,108 @@ proc add(a, b):
 let result = add(5, 3)
 ```
 
+### Lambda Expressions
+```nim
+# Lambda assigned to variable
+var square = proc(x: int):
+  return x * x
+
+# Lambda as argument
+var result = map([1, 2, 3], proc(x): return x * 2)
+```
+
+### Tuples
+```nim
+# Unnamed tuples
+let coords = (10, 20, 30)
+let (x, y, z) = coords  # Unpacking
+
+# Named tuples
+let person = (name: "Alice", age: 25)
+echo(person.name)
+```
+
+### Object Types
+```nim
+# Define object type
+type Vector2 = object
+  x: float
+  y: float
+
+# Construct object
+var pos = Vector2(x: 10.0, y: 20.0)
+
+# Access fields
+var xCoord = pos.x
+pos.y = 15.0
+```
+
+### Enums and Case Statements
+```nim
+# Define enum
+type Color = enum
+  Red = 0
+  Green
+  Blue
+
+# Case statement with multiple values
+case color
+of Red, Green:
+  echo("Warm colors")
+of Blue:
+  echo("Cool color")
+elif brightness > 0.5:
+  echo("Bright")
+else:
+  echo("Other")
+```
+
+### Advanced Loops
+```nim
+# Multi-variable iteration
+for idx, item in array:
+  echo(idx, ": ", item)
+
+# Labeled loops with break
+block outer:
+  for i in 0..<10:
+    for j in 0..<10:
+      if condition:
+        break outer
+```
+
+### String Operations
+```nim
+# String interpolation
+var num = 42
+var str = $num  # Convert to string
+
+# String slicing
+var text = "Hello"
+var sub = text[0..2]    # "Hel" (inclusive)
+var sub2 = text[0..<2]  # "He" (exclusive)
+
+# String methods
+var upper = text.toUpper()
+var len = text.len
+```
+
+### Type Suffixes
+```nim
+var a = 123'i32      # 32-bit integer
+var b = 3.14'f32     # 32-bit float
+var c = 255'u8       # Unsigned 8-bit
+```
+
+### Defer and Cleanup
+```nim
+proc openFile():
+  var file = open("data.txt")
+  defer:
+    file.close()
+  # File automatically closed at scope exit
+```
+
 ### Arrays and Indexing
 ```nim
 let arr = [1, 2, 3, 4]
@@ -371,7 +520,7 @@ When helping users with Nimini:
 
 ### 1. Creating Native Functions
 - Always use the correct signature: `proc(env: ref Env; args: seq[Value]): Value`
-- Add `{.gcsafe.}` pragma
+- Add `{.gcsafe.}` pragma (or use `{.nimini.}` for autopragma)
 - Handle argument validation (check `args.len`, `args[i].kind`)
 - Return appropriate `Value` using constructors
 
@@ -380,20 +529,23 @@ When helping users with Nimini:
 - Return `valNil()` for errors (or custom error handling)
 - Use runtime safety checks
 
-### 3. Plugin Development
-- Register runtime functions with `registerFunc()`
-- Add codegen mappings with `mapFunction()`, `mapConstant()`
-- Include necessary imports with `addNimImport()`
+### 3. Codegen Extension Development
+- Register runtime functions with `exportNiminiProcs()` (autopragma)
+- Create extension with `newCodegenExtension()`
+- Add imports per backend with `addImport()` or `addNimImport()`
+- Map functions with `mapFunction()` or `mapNimFunction()`
+- Map constants with `mapConstant()` or `mapNimConstant()`
+- Register with `registerExtension()`
 
 ### 4. Multi-Language Features
-- Use frontends for parsing different languages
-- Use backends for generating different outputs
+- Use frontends for parsing different languages (only Nim is fully implemented)
+- Use backends for generating different outputs (Nim, Python, JS all work)
 - AST is language-independent
 
 ### 5. Performance Optimization
 - Use codegen/transpilation for production
 - Runtime is for dynamic/interactive scenarios
-- Plugin system allows extending both runtime and codegen
+- Extension system allows extending both runtime and codegen
 
 ## Project Structure
 
@@ -422,10 +574,19 @@ nimini/
 ## Important Files for Reference
 
 - **README.md** - Project overview and quick start
-- **AUTOPRAGMA.md** - Auto-registration guide
+- **AUTOPRAGMA.md** - Auto-registration guide with `{.nimini.}` pragma
+- **LAMBDA_SUPPORT.md** - Lambda expression documentation
+- **TUPLE_SUPPORT.md** - Tuple syntax and unpacking
+- **OBJECT_TYPES_IMPLEMENTATION.md** - Object types and enum types
+- **STRING_OPERATIONS.md** - String operations and methods
+- **LOOP_FEATURES.md** - Advanced loop features (labels, multi-var)
+- **TYPE_SUFFIXES.md** - Type suffixes on numeric literals
 - **examples/autopragma_example.nim** - Auto-registration example
 - **examples/codegen_example.nim** - Code generation example
-- **examples/plugin_example.nim** - Plugin system example
+- **examples/universal_extension_example.nim** - Multi-backend extension example
+- **examples/lambda_showcase.nim** - Lambda expression examples
+- **examples/object_example.nim** - Object type examples
+- **examples/tuple_example.nim** - Tuple examples
 
 ## Installation & Building
 
@@ -456,10 +617,14 @@ nimble example_codegen
 ## Common Gotchas
 
 1. **Native function signatures**: Must exactly match `proc(env: ref Env; args: seq[Value]): Value`
-2. **GC safety**: Add `{.gcsafe.}` pragma to native functions
+2. **GC safety**: Add `{.gcsafe.}` pragma to native functions (or use `{.nimini.}` with autopragma)
 3. **Value access**: Always check `val.kind` before accessing fields like `val.i`, `val.s`
 4. **Import paths**: The main module is `nimini`, submodules are `nimini/[module]`
-5. **Frontend/Backend registration**: Must register frontends/backends before use
+5. **Frontend/Backend registration**: Nim frontend is auto-registered; only Nim frontend is fully implemented (JS/Python are stubs)
+6. **Codegen extensions**: Must register extension with `registerExtension()` for codegen to use mappings
+7. **Lambda syntax**: Use `proc(params): body` not `lambda` or `fn` keywords
+8. **Tuple unpacking**: Requires `let` or `var` with parentheses: `let (x, y) = tuple`
+9. **Type suffixes**: Use apostrophe: `123'i32` not `123i32`
 
 ## Links & Resources
 

@@ -122,7 +122,9 @@ proc withIndent(ctx: CodegenContext; code: string): string =
 # Expression Code Generation
 # ------------------------------------------------------------------------------
 
+# Forward declarations for mutually recursive procs
 proc genExpr*(e: Expr; ctx: CodegenContext): string
+proc genStmt*(s: Stmt; ctx: CodegenContext): string
 
 proc genExpr*(e: Expr; ctx: CodegenContext): string =
   ## Generate code for an expression using the configured backend
@@ -509,13 +511,73 @@ proc genExpr*(e: Expr; ctx: CodegenContext): string =
         elemStrs.add(genExpr(elem, ctx))
       result &= elemStrs.join(", ")
       result &= ")"
+  
+  of ekLambda:
+    # Generate lambda/anonymous proc
+    case ctx.backend.name
+    of "Nim":
+      # Nim: proc(params): body
+      result = "proc("
+      var paramStrs: seq[string] = @[]
+      for param in e.lambdaParams:
+        if param.isVar:
+          paramStrs.add(param.name & ": var " & param.paramType)
+        elif param.paramType.len > 0:
+          paramStrs.add(param.name & ": " & param.paramType)
+        else:
+          paramStrs.add(param.name)
+      result &= paramStrs.join(", ")
+      result &= ") =\n"
+      
+      # Generate lambda body
+      ctx.indent += 1
+      for stmt in e.lambdaBody:
+        result &= genStmt(stmt, ctx) & "\n"
+      ctx.indent -= 1
+    
+    of "Python":
+      # Python: lambda params: body (but lambdas are limited, may need to use def)
+      # For multi-line bodies, we'll generate an inline function definition
+      if e.lambdaBody.len == 1:
+        # Try to use lambda for simple cases
+        result = "lambda "
+        var paramStrs: seq[string] = @[]
+        for param in e.lambdaParams:
+          paramStrs.add(param.name)
+        result &= paramStrs.join(", ")
+        result &= ": "
+        result &= genStmt(e.lambdaBody[0], ctx).strip()
+      else:
+        # Multi-line: need to define a function
+        # This is tricky in an expression context - for now, use a simple lambda that calls nothing
+        result = "lambda: None  # TODO: multi-statement lambda"
+    
+    of "JavaScript":
+      # JavaScript: (params) => { body }
+      result = "("
+      var paramStrs: seq[string] = @[]
+      for param in e.lambdaParams:
+        paramStrs.add(param.name)
+      result &= paramStrs.join(", ")
+      result &= ") => {\n"
+      
+      # Generate lambda body
+      ctx.indent += 1
+      for stmt in e.lambdaBody:
+        result &= genStmt(stmt, ctx) & "\n"
+      ctx.indent -= 1
+      result &= ctx.getIndent() & "}"
+    
+    else:
+      result = "/* lambda not implemented for " & ctx.backend.name & " */"
 
 # ------------------------------------------------------------------------------
 # Statement Code Generation
 # ------------------------------------------------------------------------------
 
-proc genStmt*(s: Stmt; ctx: CodegenContext): string
 proc genBlock*(stmts: seq[Stmt]; ctx: CodegenContext): string
+
+# genStmt is already forward declared above with genExpr
 
 proc genStmt*(s: Stmt; ctx: CodegenContext): string =
   ## Generate code for a statement using the configured backend

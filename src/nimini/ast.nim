@@ -5,6 +5,12 @@
 # ------------------------------------------------------------------------------
 
 type
+  ProcParam* = object
+    ## Procedure parameter with optional var modifier
+    name*: string
+    paramType*: string
+    isVar*: bool  # true if declared as 'var' parameter
+
   TypeKind* = enum
     tkSimple,      # int, float, string, etc.
     tkPointer,     # ptr T
@@ -31,10 +37,13 @@ type
       enumValues*: seq[tuple[name: string, value: int]]  # (name, ordinal value)
 
 # ------------------------------------------------------------------------------
-# Expression AST
+# Expression and Statement AST (must be in same type block due to mutual recursion)
 # ------------------------------------------------------------------------------
 
 type
+  # Forward declarations for mutually recursive types
+  Stmt* = ref StmtObj
+  
   ExprKind* = enum
     ekInt, ekFloat, ekString, ekBool,
     ekIdent,
@@ -48,7 +57,8 @@ type
     ekDeref,       # expr[]
     ekObjConstr,   # Object construction Type(field: value, ...)
     ekDot,         # Field access obj.field
-    ekTuple        # Tuple literal (1, 2, 3) or (name: "Bob", age: 30)
+    ekTuple,       # Tuple literal (1, 2, 3) or (name: "Bob", age: 30)
+    ekLambda       # Lambda/anonymous proc expression
 
   Expr* = ref object
     line*: int
@@ -100,12 +110,13 @@ type
       tupleElements*: seq[Expr]                         # For unnamed tuples: (1, 2, 3)
       tupleFields*: seq[tuple[name: string, value: Expr]]  # For named tuples: (x: 1, y: 2)
       isNamedTuple*: bool                                # True if using named fields
+    of ekLambda:
+      lambdaParams*: seq[ProcParam]  # Parameters for the lambda
+      lambdaBody*: seq[Stmt]         # Body statements of the lambda
+      lambdaReturnType*: TypeNode    # Optional return type
 
-# ------------------------------------------------------------------------------
-# Statement AST
-# ------------------------------------------------------------------------------
+# Statements (part of the same type block as Expressions)
 
-type
   StmtKind* = enum
     skExpr,
     skVar,
@@ -132,7 +143,9 @@ type
     values*: seq[Expr]  # Multiple values for this branch (e.g., of 1, 2, 3:)
     stmts*: seq[Stmt]
 
-  Stmt* = ref object
+  # Stmt is forward declared above with Expression AST
+  # Here we complete the StmtObj definition
+  StmtObj* = object
     line*: int
     col*: int
 
@@ -188,7 +201,7 @@ type
 
     of skProc:
       procName*: string
-      params*: seq[(string, string)]
+      params*: seq[ProcParam]  # Changed from seq[(string, string)] to support var params
       procReturnType*: TypeNode  # optional return type
       procPragmas*: seq[string]  # pragmas like {.cdecl.}
       body*: seq[Stmt]
@@ -277,6 +290,9 @@ proc newDot*(target: Expr; field: string; line=0; col=0): Expr =
 
 proc newTuple*(elements: seq[Expr]; line=0; col=0): Expr =
   Expr(kind: ekTuple, tupleElements: elements, isNamedTuple: false, line: line, col: col)
+
+proc newLambda*(params: seq[ProcParam]; body: seq[Stmt]; returnType: TypeNode = nil; line=0; col=0): Expr =
+  Expr(kind: ekLambda, lambdaParams: params, lambdaBody: body, lambdaReturnType: returnType, line: line, col: col)
 
 proc newNamedTuple*(fields: seq[tuple[name: string, value: Expr]]; line=0; col=0): Expr =
   Expr(kind: ekTuple, tupleFields: fields, isNamedTuple: true, line: line, col: col)
@@ -385,7 +401,7 @@ proc newWhile*(cond: Expr; body: seq[Stmt]; label=""; line=0; col=0): Stmt =
        whileBody: body,
        line: line, col: col)
 
-proc newProc*(name: string; params: seq[(string,string)]; body: seq[Stmt]; 
+proc newProc*(name: string; params: seq[ProcParam]; body: seq[Stmt]; 
               returnType: TypeNode = nil; pragmas: seq[string] = @[]; line=0; col=0): Stmt =
   Stmt(kind: skProc, procName: name, params: params, procReturnType: returnType,
        procPragmas: pragmas, body: body, line: line, col: col)

@@ -212,6 +212,63 @@ proc parsePrefix(p: var Parser): Expr =
       discard p.advance()
       let v = parseExpr(p, 100)
       return newUnaryOp("not", v, t.line, t.col)
+    elif t.lexeme == "proc":
+      # Parse anonymous proc (lambda expression)
+      discard p.advance()
+      discard expect(p, tkLParen, "Expected '(' after proc")
+      
+      var params: seq[ProcParam] = @[]
+      if p.cur().kind != tkRParen:
+        while true:
+          # Check for 'var' modifier
+          var isVar = false
+          if p.cur().kind == tkIdent and p.cur().lexeme == "var":
+            isVar = true
+            discard p.advance()
+          
+          let pname = expect(p, tkIdent, "Expected parameter name").lexeme
+          discard expect(p, tkColon, "Expected ':'")
+          let ptype = expect(p, tkIdent, "Expected parameter type").lexeme
+          params.add(ProcParam(name: pname, paramType: ptype, isVar: isVar))
+          if not match(p, tkComma):
+            break
+      
+      discard expect(p, tkRParen, "Expected ')'")
+      
+      # Optional return type - check if there's a colon followed by a type (not a statement)
+      var returnType: TypeNode = nil
+      var hasBodyColon = false
+      if p.cur().kind == tkColon:
+        # Save position to potentially backtrack
+        let colonPos = p.pos
+        discard p.advance()
+        # Check if it looks like a return type (an identifier that's not a statement keyword)
+        if p.cur().kind == tkIdent and p.cur().lexeme notin ["defer", "if", "for", "while", "return", "var", "let", "const", "block", "case", "break", "continue"]:
+          # This is a return type
+          returnType = parseType(p)
+          # After the return type, expect another colon for the body
+          discard expect(p, tkColon, "Expected ':' before proc body")
+          hasBodyColon = true
+        else:
+          # It's the body colon - the statement after it will be parsed as body
+          # The colon is already consumed
+          hasBodyColon = true
+      
+      if not hasBodyColon:
+        # No colon yet, expect one for the body
+        discard expect(p, tkColon, "Expected ':' before proc body")
+      
+      # Parse body - could be inline or block
+      var body: seq[Stmt] = @[]
+      if p.cur().kind == tkNewline:
+        # Multi-line block body
+        discard p.advance()
+        body = parseBlock(p)
+      else:
+        # Inline single statement
+        body.add(parseStmt(p))
+      
+      return newLambda(params, body, returnType, t.line, t.col)
     elif t.lexeme == "cast":
       # Parse cast[Type](expr)
       discard p.advance()
@@ -313,10 +370,28 @@ proc parsePrefix(p: var Parser): Expr =
       
       discard expect(p, tkRParen, "Expected ')'")
       
+      # Check for do notation: functionCall(): followed by block
+      var callExpr: Expr
       if isObjConstr:
-        newObjConstr(t.lexeme, objFields, t.line, t.col)
+        callExpr = newObjConstr(t.lexeme, objFields, t.line, t.col)
       else:
-        newCall(t.lexeme, args, t.line, t.col)
+        callExpr = newCall(t.lexeme, args, t.line, t.col)
+      
+      # Check if this is do notation: call followed by : and block
+      if p.cur().kind == tkColon:
+        discard p.advance()  # consume ':'
+        if p.cur().kind == tkNewline:
+          discard p.advance()  # consume newline
+          # This is do notation! Parse the block as a lambda body
+          let lambdaBody = parseBlock(p)
+          # Create a lambda with no parameters
+          let lambda = newLambda(@[], lambdaBody, nil, t.line, t.col)
+          # Add the lambda as the last argument to the call
+          if callExpr.kind == ekCall:
+            callExpr.args.add(lambda)
+          return callExpr
+      
+      return callExpr
     else:
       newIdent(t.lexeme, t.line, t.col)
 
@@ -627,13 +702,19 @@ proc parseProc(p: var Parser): Stmt =
   let nameTok = expect(p, tkIdent, "Expected proc name")
   discard expect(p, tkLParen, "Expected '('")
 
-  var params: seq[(string,string)] = @[]
+  var params: seq[ProcParam] = @[]
   if p.cur().kind != tkRParen:
     while true:
+      # Check for 'var' modifier
+      var isVar = false
+      if p.cur().kind == tkIdent and p.cur().lexeme == "var":
+        isVar = true
+        discard p.advance()
+      
       let pname = expect(p, tkIdent, "Expected parameter name").lexeme
       discard expect(p, tkColon, "Expected ':'")
       let ptype = expect(p, tkIdent, "Expected parameter type").lexeme
-      params.add((pname, ptype))
+      params.add(ProcParam(name: pname, paramType: ptype, isVar: isVar))
       if not match(p, tkComma):
         break
 

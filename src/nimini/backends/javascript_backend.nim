@@ -2,6 +2,7 @@
 # Generates JavaScript (ES6+) code from Nimini AST
 
 import nimini/backend
+import nimini/ast
 import std/strutils
 
 type
@@ -129,11 +130,12 @@ method generateContinue*(backend: JavaScriptBackend; label: string; indent: stri
 # Function/Procedure Generation
 # ------------------------------------------------------------------------------
 
-method generateProcDecl*(backend: JavaScriptBackend; name: string; params: seq[(string, string)]; indent: string): string =
+method generateProcDecl*(backend: JavaScriptBackend; name: string; params: seq[ProcParam]; indent: string): string =
   var paramStrs: seq[string] = @[]
-  for (pname, ptype) in params:
+  for param in params:
     # JavaScript doesn't require type annotations
-    paramStrs.add(pname)
+    # JavaScript passes objects by reference, so var params work naturally
+    paramStrs.add(param.name)
   
   let paramList = paramStrs.join(", ")
   result = indent & "function " & name & "(" & paramList & ") {"

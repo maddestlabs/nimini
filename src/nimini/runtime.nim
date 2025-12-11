@@ -26,6 +26,7 @@ type
     isNative*: bool
     native*: NativeFunc
     params*: seq[string]
+    varParams*: seq[bool]  # Track which params are var (pass-by-reference)
     stmts*: seq[Stmt]
 
   Value* = ref object
@@ -110,6 +111,7 @@ proc valNativeFunc*(fn: NativeFunc): Value =
     isNative: true,
     native: fn,
     params: @[],
+    varParams: @[],
     stmts: @[]
   ))
 
@@ -118,8 +120,13 @@ proc valUserFunc*(params: seq[string]; stmts: seq[Stmt]): Value =
     isNative: false,
     native: nil,
     params: params,
+    varParams: newSeq[bool](params.len),  # Initialize with all false
     stmts: stmts
   ))
+
+proc valFunction*(fnVal: FunctionVal): Value =
+  ## Create a function value from a FunctionVal object
+  Value(kind: vkFunction, fnVal: fnVal)
 
 proc valMap*(initialMap: Table[string, Value] = initTable[string, Value]()): Value =
   Value(kind: vkMap, map: initialMap)
@@ -348,8 +355,17 @@ proc evalCall(name: string; args: seq[Expr]; env: ref Env): Value =
     # User-defined function
     let callEnv = newEnv(env)
     var argVals: seq[Value] = @[]
-    for a in args:
-      argVals.add evalExpr(a, env)
+    var argRefs: seq[string] = @[]  # Track which args are variable references for var params
+    
+    for i, a in args:
+      if i < fn.varParams.len and fn.varParams[i] and a.kind == ekIdent:
+        # This is a var parameter and the argument is a simple identifier
+        # Store the variable name for later updating
+        argRefs.add(a.ident)
+        argVals.add(getVar(env, a.ident))
+      else:
+        argRefs.add("")
+        argVals.add(evalExpr(a, env))
 
     # Bind parameters
     for i, pname in fn.params:
@@ -371,6 +387,13 @@ proc evalCall(name: string; args: seq[Expr]; env: ref Env): Value =
     # Execute deferred statements in reverse order (LIFO)
     for i in countdown(callEnv.deferStack.len - 1, 0):
       discard execStmt(callEnv.deferStack[i], callEnv)
+    
+    # Copy back var parameters to the calling environment
+    for i, pname in fn.params:
+      if i < fn.varParams.len and fn.varParams[i] and i < argRefs.len and argRefs[i] != "":
+        # This was a var parameter, copy the modified value back
+        let modifiedVal = getVar(callEnv, pname)
+        defineVar(env, argRefs[i], modifiedVal)
     
     if hasReturnValue:
       return returnValue
@@ -621,6 +644,20 @@ proc evalExpr(e: Expr; env: ref Env): Value =
       for elem in e.tupleElements:
         elements.add(evalExpr(elem, env))
       valArray(elements)
+  
+  of ekLambda:
+    # Lambda expression - create a function value
+    var params: seq[string] = @[]
+    var varParams: seq[bool] = @[]
+    for param in e.lambdaParams:
+      params.add(param.name)
+      varParams.add(param.isVar)
+    valFunction(FunctionVal(
+      isNative: false,
+      params: params,
+      varParams: varParams,
+      stmts: e.lambdaBody
+    ))
 
 # ------------------------------------------------------------------------------
 # Statement Execution
@@ -922,9 +959,18 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
 
   of skProc:
     var pnames: seq[string] = @[]
-    for (n, _) in s.params:
-      pnames.add(n)
-    defineVar(env, s.procName, valUserFunc(pnames, s.body))
+    var varParams: seq[bool] = @[]
+    for param in s.params:
+      pnames.add(param.name)
+      varParams.add(param.isVar)
+    
+    let funcVal = FunctionVal(
+      isNative: false,
+      params: pnames,
+      varParams: varParams,
+      stmts: s.body
+    )
+    defineVar(env, s.procName, valFunction(funcVal))
     noReturn()
 
   of skReturn:

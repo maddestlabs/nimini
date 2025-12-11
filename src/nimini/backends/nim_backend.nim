@@ -2,6 +2,7 @@
 # Generates native Nim code from Nimini AST
 
 import nimini/backend
+import nimini/ast
 import std/strutils
 
 type
@@ -123,14 +124,18 @@ method generateContinue*(backend: NimBackend; label: string; indent: string): st
 # Function/Procedure Generation
 # ------------------------------------------------------------------------------
 
-method generateProcDecl*(backend: NimBackend; name: string; params: seq[(string, string)]; indent: string): string =
+method generateProcDecl*(backend: NimBackend; name: string; params: seq[ProcParam]; indent: string): string =
   var paramStrs: seq[string] = @[]
-  for (pname, ptype) in params:
-    if ptype.len > 0:
-      paramStrs.add(pname & ": " & ptype)
+  for param in params:
+    var paramStr = ""
+    if param.isVar:
+      paramStr = param.name & ": var " & param.paramType
+    elif param.paramType.len > 0:
+      paramStr = param.name & ": " & param.paramType
     else:
       # No type specified - Nim will infer or use auto
-      paramStrs.add(pname)
+      paramStr = param.name
+    paramStrs.add(paramStr)
   
   let paramList = paramStrs.join("; ")
   result = indent & "proc " & name & "(" & paramList & ") ="

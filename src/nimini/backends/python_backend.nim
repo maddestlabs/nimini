@@ -2,6 +2,7 @@
 # Generates Python code from Nimini AST
 
 import nimini/backend
+import nimini/ast
 import std/strutils
 
 type
@@ -131,12 +132,16 @@ method generateContinue*(backend: PythonBackend; label: string; indent: string):
 # Function/Procedure Generation
 # ------------------------------------------------------------------------------
 
-method generateProcDecl*(backend: PythonBackend; name: string; params: seq[(string, string)]; indent: string): string =
+method generateProcDecl*(backend: PythonBackend; name: string; params: seq[ProcParam]; indent: string): string =
   var paramStrs: seq[string] = @[]
-  for (pname, ptype) in params:
+  for param in params:
     # Python doesn't require type annotations (though they can be added)
-    # For now, just use parameter names
-    paramStrs.add(pname)
+    # Python passes all objects by reference anyway, so var params are handled naturally
+    # We could add a comment for var params for clarity
+    if param.isVar:
+      paramStrs.add(param.name & "  # var param")
+    else:
+      paramStrs.add(param.name)
   
   let paramList = paramStrs.join(", ")
   result = indent & "def " & name & "(" & paramList & "):"

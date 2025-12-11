@@ -5,6 +5,7 @@ Nimini is a lightweight, embeddable scripting language built around [Nim](https:
 Features:
 - Zero external dependencies (Nim stdlib only)
 - Familiar Python-like syntax with Nim keywords
+- **Lambda expressions** and **do notation** for functional programming
 - Simple native function binding API
 - Event-driven architecture
 - Automatic type conversion and error handling
@@ -219,6 +220,45 @@ var halfSize = digitSize / 2'f32  # Force float division
 - Float: `'f32`, `'f64`
 
 Type suffixes are preserved in Nim codegen, omitted in Python/JavaScript (dynamic typing). See [docs/TYPE_SUFFIXES.md](docs/TYPE_SUFFIXES.md) for full documentation.
+
+### Lambda Expressions and Do Notation
+
+Nimini supports full lambda expressions (anonymous procedures) with closure semantics:
+
+```nim
+# Lambda assigned to variable
+var square = proc(x: int):
+  return x * x
+
+echo($square(5))  # 25
+
+# Lambda passed as argument
+proc runTwice(fn: int):
+  fn()
+  fn()
+
+runTwice(proc():
+  echo("Hello!")
+)
+
+# Do notation (syntactic sugar)
+proc withBlock(callback: int):
+  echo("Before")
+  callback()
+  echo("After")
+
+withBlock():
+  echo("Inside the do block!")
+```
+
+**Features:**
+- Full statement blocks in lambda bodies
+- Closure support (access to outer scope variables)
+- Inline single-statement lambdas
+- Do notation for cleaner callback syntax
+- Works in both interpreted and transpiled code
+
+See [docs/LAMBDA_SUPPORT.md](docs/LAMBDA_SUPPORT.md) for comprehensive documentation and examples.
 
 ## History and Future
 

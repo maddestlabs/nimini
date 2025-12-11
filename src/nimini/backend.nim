@@ -1,6 +1,8 @@
 # Abstract Backend Interface for Multi-Language Code Generation
 # Defines the contract that all language backends must implement
 
+import ast
+
 type
   CodegenBackend* = ref object of RootObj
     ## Abstract backend for code generation
@@ -114,7 +116,7 @@ method generateContinue*(backend: CodegenBackend; label: string; indent: string)
 # Function/Procedure Generation
 # ------------------------------------------------------------------------------
 
-method generateProcDecl*(backend: CodegenBackend; name: string; params: seq[(string, string)]; indent: string): string {.base.} =
+method generateProcDecl*(backend: CodegenBackend; name: string; params: seq[ProcParam]; indent: string): string {.base.} =
   ## Generate code for a procedure/function declaration
   quit "generateProcDecl not implemented for backend: " & backend.name
 
