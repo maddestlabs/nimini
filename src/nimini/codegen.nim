@@ -3,12 +3,13 @@
 
 import std/[strutils, tables, sets]
 import ast
-import plugin
+import codegen_ext
 import backend
 import backends/nim_backend
 
 export backend
 export nim_backend
+export codegen_ext
 
 # ------------------------------------------------------------------------------
 # Type Helpers
@@ -465,16 +466,16 @@ proc generateNimCode*(prog: Program; ctx: CodegenContext = nil): string =
   result = genProgram(prog, genCtx)
 
 # ------------------------------------------------------------------------------
-# Plugin Integration
+# Extension Integration
 # ------------------------------------------------------------------------------
 
-proc applyPluginCodegen*(plugin: Plugin; ctx: CodegenContext) =
-  ## Apply plugin codegen metadata to a codegen context
+proc applyExtensionCodegen*(ext: CodegenExtension; ctx: CodegenContext) =
+  ## Apply extension codegen metadata to a codegen context
   let backendName = ctx.backend.name
   
-  # Try to use backend-specific mappings first
-  if backendName in plugin.codegen.backends:
-    let mapping = plugin.codegen.backends[backendName]
+  # Use backend-specific mappings
+  if backendName in ext.backends:
+    let mapping = ext.backends[backendName]
     
     # Add backend-specific imports
     for imp in mapping.imports:
@@ -487,30 +488,15 @@ proc applyPluginCodegen*(plugin: Plugin; ctx: CodegenContext) =
     # Add backend-specific constant mappings
     for dslName, targetValue in mapping.constantMappings:
       ctx.addConstantMapping(dslName, targetValue)
-  
-  # Fallback to legacy Nim mappings for backward compatibility
-  elif backendName == "Nim":
-    # Add imports
-    for imp in plugin.codegen.nimImports:
-      ctx.addImport(imp)
 
-    # Add function mappings
-    for dslName, nimCode in plugin.codegen.functionMappings:
-      ctx.addFunctionMapping(dslName, nimCode)
-
-    # Add constant mappings
-    for dslName, nimValue in plugin.codegen.constantMappings:
-      ctx.addConstantMapping(dslName, nimValue)
-
-proc loadPluginsCodegen*(ctx: CodegenContext; registry: PluginRegistry) =
-  ## Load codegen metadata from all plugins in a registry
+proc loadExtensionsCodegen*(ctx: CodegenContext; registry: ExtensionRegistry) =
+  ## Load codegen metadata from all extensions in a registry
   for name in registry.loadOrder:
-    let plugin = registry.plugins[name]
-    if plugin.enabled:
-      applyPluginCodegen(plugin, ctx)
+    let ext = registry.extensions[name]
+    applyExtensionCodegen(ext, ctx)
 
-proc loadPluginsCodegen*(ctx: CodegenContext) =
-  ## Load codegen metadata from global plugin registry
-  if plugin.globalRegistry.isNil:
+proc loadExtensionsCodegen*(ctx: CodegenContext) =
+  ## Load codegen metadata from global extension registry
+  if codegen_ext.globalExtRegistry.isNil:
     return
-  loadPluginsCodegen(ctx, plugin.globalRegistry)
+  loadExtensionsCodegen(ctx, codegen_ext.globalExtRegistry)

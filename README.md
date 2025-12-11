@@ -8,9 +8,9 @@ Features:
 - Simple native function binding API
 - Event-driven architecture
 - Automatic type conversion and error handling
-- Compile-time plugin architecture
 - DSL to Nim code generation (transpilation)
 - Auto-registration to expose procedures with `{.nimini.}` pragma
+- Codegen extensions for multi-backend transpilation
 
 Nimini trades some expressiveness for simplicity and ease of integration. If you need maximum power, consider Lua. If you want Nim-like familiarity with minimal dependencies, Nimini can help.
 
@@ -137,24 +137,34 @@ let jsCode = generateCode(program, newJavaScriptBackend())
 
 See [MULTI_BACKEND.md](MULTI_BACKEND.md) for comprehensive documentation.
 
-## Plugin System
+## Codegen Extensions
 
-Extend Nimini with custom functions and types:
+For transpilation, create codegen extensions to map your functions across backends:
 
 ```nim
-let plugin = newPlugin("math", "Author", "1.0.0", "Math utilities")
-plugin.registerFunc("sqrt", sqrtFunc)
-plugin.registerConstantFloat("PI", 3.14159)
+# Runtime registration (use autopragma)
+proc sqrt(env: ref Env; args: seq[Value]): Value {.nimini.} =
+  return valFloat(sqrt(args[0].f))
 
-# Add codegen support for transpilation
-plugin.addNimImport("std/math")
-plugin.mapFunction("sqrt", "sqrt")
-plugin.mapConstant("PI", "PI")
+initRuntime()
+exportNiminiProcs(sqrt)
+defineVar(runtimeEnv, "PI", valFloat(3.14159))
 
-loadPlugin(plugin, runtimeEnv)
+# Codegen extension for transpilation
+let mathExt = newCodegenExtension("math")
+mathExt.addNimImport("std/math")
+mathExt.mapNimFunction("sqrt", "sqrt")
+mathExt.mapNimConstant("PI", "PI")
+
+# Multi-backend support
+mathExt.addImport("Python", "math")
+mathExt.mapFunction("Python", "sqrt", "math.sqrt")
+mathExt.mapConstant("Python", "PI", "math.pi")
+
+registerExtension(mathExt)
 ```
 
-See [PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md) for details.
+See [examples/universal_extension_example.nim](examples/universal_extension_example.nim) for a complete example.
 
 ## History and Future
 

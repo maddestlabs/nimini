@@ -1,49 +1,37 @@
-## Nimini Codegen Example
+## Nimini Codegen Example - Using CodegenExtension
 
-import std/math
-import ../src/nimini/[runtime, tokenizer, plugin, parser, codegen]
+import ../src/nimini
 
-# Create a simple math plugin with runtime + codegen support
-proc createMathPlugin(): Plugin =
-  let p = newPlugin(
-    name        = "math",
-    author      = "Nimini Team",
-    version     = "1.0.0",
-    description = "Math functions with runtime + codegen support"
-  )
+# Avoid naming conflict by importing with except
+import std/math except sqrt, pow
 
-  # Native runtime functions --------------------------
+proc sqrt(env: ref Env; args: seq[Value]): Value {.nimini, gcsafe.} =
+  if args.len != 1:
+    return valNil()
+  return valFloat(math.sqrt(args[0].f))
 
-  proc sqrtFunc(env: ref Env; args: seq[Value]): Value {.gcsafe.} =
-    if args.len != 1:
-      return valNil()
-    return valFloat(sqrt(args[0].f))
+proc pow(env: ref Env; args: seq[Value]): Value {.nimini, gcsafe.} =
+  if args.len != 2:
+    return valNil()
+  return valFloat(math.pow(args[0].f, args[1].f))
 
-  proc powFunc(env: ref Env; args: seq[Value]): Value {.gcsafe.} =
-    if args.len != 2:
-      return valNil()
-    return valFloat(pow(args[0].f, args[1].f))
-
-  # Register runtime functions
-  p.registerFunc("sqrt", sqrtFunc)
-  p.registerFunc("pow", powFunc)
-  p.registerConstantFloat("PI", 3.14159265359)
-  p.registerConstantFloat("E", 2.71828182846)
-
-  # Codegen mappings -------------------------------
-
-  # Codegen imports
-  p.addNimImport("std/math")
-
-  # DSL → Nim function mappings
-  p.mapFunction("sqrt", "sqrt")
-  p.mapFunction("pow", "pow")
-
-  # Constant mappings
-  p.mapConstant("PI", "PI")
-  p.mapConstant("E", "E")
-
-  return p
+# Create a codegen extension for transpilation support
+proc createMathExtension(): CodegenExtension =
+  let ext = newCodegenExtension("math")
+  
+  # Nim backend mappings
+  ext.addNimImport("std/math")
+  ext.mapNimFunction("sqrt", "sqrt")
+  ext.mapNimFunction("pow", "pow")
+  ext.mapNimConstant("PI", "PI")
+  ext.mapNimConstant("E", "E")
+  
+  # Could add Python/JS mappings here too:
+  # ext.addImport("Python", "math")
+  # ext.mapFunction("Python", "sqrt", "math.sqrt")
+  # ext.mapFunction("Python", "pow", "math.pow")
+  
+  return ext
 
 
 # ------------------------------------------------------
@@ -74,13 +62,18 @@ var result = side * E
   let program = parseDsl(tokens)
 
   # ------------------------------------------------------
-  # Initialize runtime + plugin
+  # Initialize runtime (use autopragma for registration)
   # ------------------------------------------------------
   initRuntime()
-
-  let mathPlugin = createMathPlugin()
-  registerPlugin(mathPlugin)
-  loadPlugin(mathPlugin, runtimeEnv)
+  exportNiminiProcs(sqrt, pow)
+  
+  # Register constants manually
+  defineVar(runtimeEnv, "PI", valFloat(PI))
+  defineVar(runtimeEnv, "E", valFloat(E))
+  
+  # Register codegen extension
+  let mathExt = createMathExtension()
+  registerExtension(mathExt)
 
   # ------------------------------------------------------
   # Execute in DSL runtime
@@ -98,7 +91,7 @@ var result = side * E
   echo "---"
 
   let ctx = newCodegenContext()
-  loadPluginsCodegen(ctx)
+  loadExtensionsCodegen(ctx)
   let nimCode = generateNimCode(program, ctx)
 
   echo nimCode

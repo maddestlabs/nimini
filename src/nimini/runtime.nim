@@ -124,7 +124,6 @@ proc valUserFunc*(params: seq[string]; stmts: seq[Stmt]): Value =
 proc valMap*(initialMap: Table[string, Value] = initTable[string, Value]()): Value =
   Value(kind: vkMap, map: initialMap)
 
-# Alias for compatibility with plugin code
 proc newMapValue*(): Value =
   valMap()
 
@@ -673,7 +672,6 @@ proc registerNative*(name: string; fn: NativeFunc) =
 
 proc initRuntime*() =
   runtimeEnv = newEnv(nil)
-  # Note: Plugin system is initialized on-demand in plugin.nim
   # Note: Standard library functions are registered separately via initStdlib()
   
   # Register built-in print/echo functions

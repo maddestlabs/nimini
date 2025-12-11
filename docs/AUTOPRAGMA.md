@@ -160,5 +160,5 @@ proc functionName(env: ref Env; args: seq[Value]): Value
 ## See Also
 
 - [examples/autopragma_example.nim](examples/autopragma_example.nim) - Complete working example
-- [Plugin System](PLUGIN_ARCHITECTURE.md) - For more complex registration scenarios
+- [Codegen Extensions](../README.md#codegen-extensions) - For multi-backend transpilation support
 - [Runtime API](src/nimini/runtime.nim) - Core runtime and value types
