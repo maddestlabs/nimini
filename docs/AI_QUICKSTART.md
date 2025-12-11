@@ -322,6 +322,20 @@ elif other:
 else:
   # code
 
+case value
+of 1, 2, 3:
+  # Match multiple values
+  echo("small number")
+of 10:
+  # Single value
+  echo("ten")
+elif value > 100:
+  # Optional elif for range checks
+  echo("large")
+else:
+  # Optional else branch
+  echo("other")
+
 for item in collection:
   # code
 

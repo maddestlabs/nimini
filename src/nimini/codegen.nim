@@ -280,6 +280,47 @@ proc genStmt*(s: Stmt; ctx: CodegenContext): string =
 
     result = lines.join("\n")
 
+  of skCase:
+    var lines: seq[string] = @[]
+    let caseExpr = genExpr(s.caseExpr, ctx)
+    
+    # Generate case statement header
+    lines.add(ctx.withIndent("case " & caseExpr))
+    
+    # Generate 'of' branches
+    for branch in s.ofBranches:
+      # Combine multiple values with commas
+      var valuesStr = ""
+      for i, valueExpr in branch.values:
+        if i > 0:
+          valuesStr.add(", ")
+        valuesStr.add(genExpr(valueExpr, ctx))
+      
+      lines.add(ctx.withIndent("of " & valuesStr & ":"))
+      ctx.indent += 1
+      for stmt in branch.stmts:
+        lines.add(genStmt(stmt, ctx))
+      ctx.indent -= 1
+    
+    # Generate 'elif' branches (treated as part of case in Nim)
+    for elifBranch in s.caseElif:
+      let elifCond = genExpr(elifBranch.cond, ctx)
+      lines.add(ctx.withIndent("elif " & elifCond & ":"))
+      ctx.indent += 1
+      for stmt in elifBranch.stmts:
+        lines.add(genStmt(stmt, ctx))
+      ctx.indent -= 1
+    
+    # Generate 'else' branch
+    if s.caseElse.len > 0:
+      lines.add(ctx.withIndent("else:"))
+      ctx.indent += 1
+      for stmt in s.caseElse:
+        lines.add(genStmt(stmt, ctx))
+      ctx.indent -= 1
+    
+    result = lines.join("\n")
+
   of skFor:
     var lines: seq[string] = @[]
     let iterableExpr = genExpr(s.forIterable, ctx)

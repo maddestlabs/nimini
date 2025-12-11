@@ -197,6 +197,22 @@ proc getVar*(env: ref Env; name: string): Value =
 # Conversion Helpers
 # ------------------------------------------------------------------------------
 
+proc valuesEqual*(a, b: Value): bool =
+  ## Compare two values for equality (used in case statements)
+  if a.kind != b.kind:
+    return false
+  
+  case a.kind
+  of vkNil: return true
+  of vkInt: return a.i == b.i
+  of vkFloat: return a.f == b.f
+  of vkBool: return a.b == b.b
+  of vkString: return a.s == b.s
+  of vkFunction: return false  # Functions are not comparable
+  of vkArray: return false     # Arrays need deep comparison (not implemented)
+  of vkMap: return false       # Maps need deep comparison (not implemented)
+  of vkPointer: return a.ptrVal == b.ptrVal
+
 proc toBool(v: Value): bool =
   case v.kind
   of vkNil: false
@@ -541,6 +557,34 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
       let childEnv = newEnv(env)
       return execBlock(s.elseStmts, childEnv)
 
+    noReturn()
+
+  of skCase:
+    # Evaluate the case expression
+    let caseVal = evalExpr(s.caseExpr, env)
+    
+    # Try to match against 'of' branches
+    for branch in s.ofBranches:
+      for valueExpr in branch.values:
+        let branchVal = evalExpr(valueExpr, env)
+        # Compare values
+        if valuesEqual(caseVal, branchVal):
+          let childEnv = newEnv(env)
+          return execBlock(branch.stmts, childEnv)
+    
+    # If no 'of' branch matched, try 'elif' branches
+    for elifBranch in s.caseElif:
+      if toBool(evalExpr(elifBranch.cond, env)):
+        let childEnv = newEnv(env)
+        return execBlock(elifBranch.stmts, childEnv)
+    
+    # If no branch matched, execute else branch if present
+    if s.caseElse.len > 0:
+      let childEnv = newEnv(env)
+      return execBlock(s.caseElse, childEnv)
+    
+    # If we get here and no else branch exists, that's a runtime error
+    # (In Nim, this would be a compile-time error for non-exhaustive cases)
     noReturn()
 
   of skFor:

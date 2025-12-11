@@ -379,6 +379,87 @@ proc parseBlockStmt(p: var Parser): Stmt =
   let body = parseBlock(p)
   newBlock(body, tok.line, tok.col)
 
+proc parseCase(p: var Parser): Stmt =
+  let tok = advance(p)  # consume 'case'
+  let expr = parseExpr(p)
+  
+  # Optional colon after the expression (both syntaxes are allowed)
+  if p.cur().kind == tkColon:
+    discard p.advance()
+  
+  discard expect(p, tkNewline, "Expected newline after case expression")
+  
+  var caseStmt = newCase(expr, tok.line, tok.col)
+  
+  # Skip newlines before first branch
+  while p.cur().kind == tkNewline:
+    discard p.advance()
+  
+  # Parse 'of' branches
+  while p.cur().kind == tkIdent and p.cur().lexeme == "of":
+    discard p.advance()  # consume 'of'
+    
+    # Parse comma-separated values for this branch
+    var values: seq[Expr] = @[]
+    values.add(parseExpr(p))
+    
+    while p.cur().kind == tkComma:
+      discard p.advance()  # consume comma
+      values.add(parseExpr(p))
+    
+    discard expect(p, tkColon, "Expected ':' after of values")
+    
+    # Check if the body is inline or on next lines
+    var branchBody: seq[Stmt] = @[]
+    if p.cur().kind != tkNewline:
+      # Inline statement (e.g., of "x": echo "hi")
+      branchBody.add(parseStmt(p))
+    else:
+      # Block of statements
+      discard expect(p, tkNewline, "Expected newline")
+      branchBody = parseBlock(p)
+    
+    caseStmt.addOfBranch(values, branchBody)
+    
+    # Skip newlines between branches
+    while p.cur().kind == tkNewline:
+      discard p.advance()
+  
+  # Parse optional 'elif' branches (treated like else: if)
+  while p.cur().kind == tkIdent and p.cur().lexeme == "elif":
+    discard p.advance()  # consume 'elif'
+    let cond = parseExpr(p)
+    discard expect(p, tkColon, "Expected ':' after elif condition")
+    
+    var elifBody: seq[Stmt] = @[]
+    if p.cur().kind != tkNewline:
+      elifBody.add(parseStmt(p))
+    else:
+      discard expect(p, tkNewline, "Expected newline")
+      elifBody = parseBlock(p)
+    
+    caseStmt.addCaseElif(cond, elifBody)
+    
+    # Skip newlines
+    while p.cur().kind == tkNewline:
+      discard p.advance()
+  
+  # Parse optional 'else' branch
+  if p.cur().kind == tkIdent and p.cur().lexeme == "else":
+    discard p.advance()  # consume 'else'
+    discard expect(p, tkColon, "Expected ':' after else")
+    
+    var elseBody: seq[Stmt] = @[]
+    if p.cur().kind != tkNewline:
+      elseBody.add(parseStmt(p))
+    else:
+      discard expect(p, tkNewline, "Expected newline")
+      elseBody = parseBlock(p)
+    
+    caseStmt.addCaseElse(elseBody)
+  
+  caseStmt
+
 proc parseStmt(p: var Parser): Stmt =
   # Skip unexpected indent/dedent tokens to make parser more robust
   while p.cur().kind == tkIndent or p.cur().kind == tkDedent:
@@ -405,6 +486,7 @@ proc parseStmt(p: var Parser): Stmt =
       let typeValue = parseType(p)
       return newType(typeName, typeValue, t.line, t.col)
     of "if": return parseIf(p)
+    of "case": return parseCase(p)
     of "for": return parseFor(p)
     of "while": return parseWhile(p)
     of "proc": return parseProc(p)

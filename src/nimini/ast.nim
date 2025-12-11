@@ -92,6 +92,7 @@ type
     skConst,       # const declaration
     skAssign,
     skIf,
+    skCase,        # case statement
     skFor,
     skWhile,
     skProc,
@@ -102,6 +103,10 @@ type
 
   IfBranch* = object
     cond*: Expr
+    stmts*: seq[Stmt]
+
+  OfBranch* = object
+    values*: seq[Expr]  # Multiple values for this branch (e.g., of 1, 2, 3:)
     stmts*: seq[Stmt]
 
   Stmt* = ref object
@@ -135,6 +140,12 @@ type
       ifBranch*: IfBranch
       elifBranches*: seq[IfBranch]
       elseStmts*: seq[Stmt]
+
+    of skCase:
+      caseExpr*: Expr             # The expression being matched
+      ofBranches*: seq[OfBranch]  # of value1, value2: stmts
+      caseElif*: seq[IfBranch]    # Optional elif branches
+      caseElse*: seq[Stmt]        # Optional else branch
 
     of skFor:
       forVar*: string
@@ -270,6 +281,23 @@ proc addElif*(s: Stmt; cond: Expr; body: seq[Stmt]) =
 
 proc addElse*(s: Stmt; body: seq[Stmt]) =
   s.elseStmts = body
+
+proc newCase*(expr: Expr; line=0; col=0): Stmt =
+  Stmt(kind: skCase,
+       caseExpr: expr,
+       ofBranches: @[],
+       caseElif: @[],
+       caseElse: @[],
+       line: line, col: col)
+
+proc addOfBranch*(s: Stmt; values: seq[Expr]; body: seq[Stmt]) =
+  s.ofBranches.add OfBranch(values: values, stmts: body)
+
+proc addCaseElif*(s: Stmt; cond: Expr; body: seq[Stmt]) =
+  s.caseElif.add IfBranch(cond: cond, stmts: body)
+
+proc addCaseElse*(s: Stmt; body: seq[Stmt]) =
+  s.caseElse = body
 
 proc newFor*(varName: string; iterable: Expr; body: seq[Stmt]; line=0; col=0): Stmt =
   Stmt(kind: skFor,
