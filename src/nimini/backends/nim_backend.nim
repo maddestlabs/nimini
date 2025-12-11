@@ -1,7 +1,7 @@
 # Nim Backend for Code Generation
 # Generates native Nim code from Nimini AST
 
-import ../backend
+import nimini/backend
 import std/strutils
 
 type

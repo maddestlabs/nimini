@@ -1,7 +1,7 @@
 ## Nimini Standard Library - Sequence Operations
 ## Provides newSeq, setLen, and other sequence manipulation functions
 
-import ../runtime
+import nimini/runtime
 
 # Create a new sequence with given size
 proc niminiNewSeq*(env: ref Env; args: seq[Value]): Value =

@@ -1,10 +1,10 @@
 # Nim Frontend - Wraps existing Nim-like DSL parser
 # Maintains backward compatibility with existing Nimini code
 
-import ../frontend
-import ../tokenizer
-import ../parser
-import ../ast
+import nimini/frontend
+import nimini/tokenizer
+import nimini/parser
+import nimini/ast
 
 export frontend
 

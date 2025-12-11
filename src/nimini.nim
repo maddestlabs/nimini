@@ -33,20 +33,20 @@ import nimini/[ast, runtime, tokenizer, plugin, parser, codegen, backend, fronte
 import nimini/stdlib/seqops
 
 # backends allow exporting generated code in various languages
-import ../src/nimini/backends/[nim_backend]
+import nimini/backends/[nim_backend]
 # Uncomment to enable Python backend support:
-# import ../src/nimini/backends/[python_backend]
+# import nimini/backends/[python_backend]
 # Uncomment to enable JavaScript backend support:
-# import ../src/nimini/backends/[javascript_backend]
+# import nimini/backends/[javascript_backend]
 
 # frontends allow scripting in various languages
-import ../src/nimini/frontends/[nim_frontend]
+import nimini/frontends/[nim_frontend]
 # Uncomment to enable Python frontend support:
-# import ../src/nimini/frontends/[py_frontend]
+# import nimini/frontends/[py_frontend]
 # Uncomment to enable JavaScript frontend support:
-# import ../src/nimini/frontends/[js_frontend]
+# import nimini/frontends/[js_frontend]
 
-import ../src/nimini/lang/[nim_extensions]
+import nimini/lang/[nim_extensions]
 
 # Re-export everything
 export ast

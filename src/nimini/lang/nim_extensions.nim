@@ -18,7 +18,7 @@
 ##   registerNimini(myFunc)  # or use exportNiminiProcs macro
 
 import macros
-import ../runtime
+import nimini/runtime
 
 template nimini*() {.pragma.}
   ## Pragma to mark a proc for registration with Nimini runtime.

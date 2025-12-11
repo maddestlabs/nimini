@@ -1,10 +1,10 @@
 # JavaScript Frontend - Parse JavaScript syntax into Nimini AST
 # Supports ES6+ subset for library interop
 
-import ../frontend
-import ../tokenizer
-import ../parser
-import ../ast
+import nimini/frontend
+import nimini/tokenizer
+import nimini/parser
+import nimini/ast
 import std/[strutils, tables]
 
 export frontend

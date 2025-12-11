@@ -1,7 +1,7 @@
 # Python Backend for Code Generation
 # Generates Python code from Nimini AST
 
-import ../backend
+import nimini/backend
 import std/strutils
 
 type
