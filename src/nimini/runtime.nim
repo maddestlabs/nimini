@@ -127,6 +127,9 @@ proc valMap*(initialMap: Table[string, Value] = initTable[string, Value]()): Val
 proc newMapValue*(): Value =
   valMap()
 
+proc valArray*(elements: seq[Value] = @[]): Value =
+  Value(kind: vkArray, arr: elements)
+
 # Map access operators
 proc `[]`*(v: Value; key: string): Value =
   if v.kind != vkMap:
@@ -257,15 +260,40 @@ proc toInt*(v: Value): int =
 # ------------------------------------------------------------------------------
 
 type
+  ControlFlow = enum
+    cfNone,        # Normal execution
+    cfReturn,      # Return from function
+    cfBreak,       # Break out of loop
+    cfContinue     # Continue to next iteration
+
   ExecResult = object
-    hasReturn: bool
+    controlFlow: ControlFlow
     value: Value
+    label: string  # Optional label for break/continue
 
 proc noReturn(): ExecResult =
-  ExecResult(hasReturn: false, value: valNil())
+  ExecResult(controlFlow: cfNone, value: valNil(), label: "")
 
 proc withReturn(v: Value): ExecResult =
-  ExecResult(hasReturn: true, value: v)
+  ExecResult(controlFlow: cfReturn, value: v, label: "")
+
+proc withBreak(label: string = ""): ExecResult =
+  ExecResult(controlFlow: cfBreak, value: valNil(), label: label)
+
+proc withContinue(label: string = ""): ExecResult =
+  ExecResult(controlFlow: cfContinue, value: valNil(), label: label)
+
+proc hasReturn(r: ExecResult): bool =
+  r.controlFlow == cfReturn
+
+proc hasBreak(r: ExecResult): bool =
+  r.controlFlow == cfBreak
+
+proc hasContinue(r: ExecResult): bool =
+  r.controlFlow == cfContinue
+
+proc hasControlFlow(r: ExecResult): bool =
+  r.controlFlow != cfNone
 
 # ------------------------------------------------------------------------------
 # Expression Evaluation
@@ -278,6 +306,33 @@ proc execBlock(sts: seq[Stmt]; env: ref Env): ExecResult
 # Function call --------------------------------------------------------
 
 proc evalCall(name: string; args: seq[Expr]; env: ref Env): Value =
+  # Handle built-in string methods (when first arg is the target object)
+  if args.len > 0 and name in ["toUpper", "toLower", "strip", "trim"]:
+    let target = evalExpr(args[0], env)
+    
+    case name
+    of "toUpper":
+      if target.kind == vkString:
+        return valString(target.s.toUpper())
+      else:
+        quit "Runtime Error: toUpper() requires a string, got " & $target.kind
+    
+    of "toLower":
+      if target.kind == vkString:
+        return valString(target.s.toLower())
+      else:
+        quit "Runtime Error: toLower() requires a string, got " & $target.kind
+    
+    of "strip", "trim":
+      if target.kind == vkString:
+        return valString(target.s.strip())
+      else:
+        quit "Runtime Error: strip() requires a string, got " & $target.kind
+    
+    else:
+      discard  # Fall through to normal lookup
+  
+  # Normal function lookup
   let val = getVar(env, name)
   if val.kind != vkFunction:
     quit "Runtime Error: '" & name & "' is not callable"
@@ -308,7 +363,7 @@ proc evalCall(name: string; args: seq[Expr]; env: ref Env): Value =
     var hasReturnValue = false
     for st in fn.stmts:
       let res = execStmt(st, callEnv)
-      if res.hasReturn:
+      if res.hasReturn():
         returnValue = res.value
         hasReturnValue = true
         break
@@ -415,10 +470,8 @@ proc evalExpr(e: Expr; env: ref Env): Value =
       let rangeMap = initTable[string, Value]()
       var rangeVal = valMap()
       rangeVal.map["start"] = valInt(toInt(l))
-      if e.op == "..":
-        rangeVal.map["end"] = valInt(toInt(r))  # Inclusive
-      else:  # ..<
-        rangeVal.map["end"] = valInt(toInt(r) - 1)  # Exclusive, so subtract 1
+      rangeVal.map["end"] = valInt(toInt(r))
+      rangeVal.map["inclusive"] = valBool(e.op == "..")  # Store whether range is inclusive
       rangeVal.map["is_range"] = valBool(true)
       rangeVal
     
@@ -444,6 +497,37 @@ proc evalExpr(e: Expr; env: ref Env): Value =
     let target = evalExpr(e.indexTarget, env)
     let index = evalExpr(e.indexExpr, env)
     
+    # Check if this is a slice operation (index is a range map)
+    if index.kind == vkMap and "is_range" in index.map and toBool(index.map["is_range"]):
+      # This is a slice operation
+      let startIdx = toInt(index.map["start"])
+      let endIdx = toInt(index.map["end"])
+      let isInclusive = if "inclusive" in index.map: toBool(index.map["inclusive"]) else: true
+      
+      case target.kind
+      of vkString:
+        # String slicing
+        let actualEnd = if isInclusive: min(endIdx + 1, target.s.len) else: min(endIdx, target.s.len)
+        let actualStart = max(0, startIdx)
+        if actualStart >= target.s.len or actualStart >= actualEnd:
+          return valString("")
+        return valString(target.s[actualStart..<actualEnd])
+      
+      of vkArray:
+        # Array slicing
+        let actualEnd = if isInclusive: min(endIdx + 1, target.arr.len) else: min(endIdx, target.arr.len)
+        let actualStart = max(0, startIdx)
+        if actualStart >= target.arr.len or actualStart >= actualEnd:
+          return Value(kind: vkArray, arr: @[])
+        var sliced: seq[Value] = @[]
+        for i in actualStart..<actualEnd:
+          sliced.add(target.arr[i])
+        return Value(kind: vkArray, arr: sliced)
+      
+      else:
+        quit "Cannot slice value of type: " & $target.kind
+    
+    # Regular indexing (single element access)
     case target.kind
     of vkArray:
       let idx = toInt(index)
@@ -483,6 +567,61 @@ proc evalExpr(e: Expr; env: ref Env): Value =
     # In a real implementation, this would dereference a pointer
     evalExpr(e.derefExpr, env)
 
+  of ekObjConstr:
+    # Object construction - create a map/table with field values
+    # In the runtime, we represent objects as maps
+    var objMap = initTable[string, Value]()
+    for field in e.objFields:
+      let fieldValue = evalExpr(field.value, env)
+      objMap[field.name] = fieldValue
+    # Return as a map value
+    valMap(objMap)
+
+  of ekDot:
+    # Field access or property access
+    let target = evalExpr(e.dotTarget, env)
+    
+    # Handle built-in properties for strings and arrays
+    case e.dotField
+    of "len":
+      # Get length of string, array, or map
+      case target.kind
+      of vkString:
+        return valInt(target.s.len)
+      of vkArray:
+        return valInt(target.arr.len)
+      of vkMap:
+        return valInt(target.map.len)
+      else:
+        quit "Cannot get length of type: " & $target.kind
+    
+    else:
+      # Regular field access - treat target as a map
+      if target.kind == vkMap:
+        if e.dotField in target.map:
+          return target.map[e.dotField]
+        # Field not found - return nil
+        valNil()
+      else:
+        # Not a map/object - return nil
+        valNil()
+
+  of ekTuple:
+    # Tuple literal - represent as array
+    if e.isNamedTuple:
+      # Named tuple: (name: "Bob", age: 30) - represent as map
+      var tupleMap = initTable[string, Value]()
+      for field in e.tupleFields:
+        let fieldValue = evalExpr(field.value, env)
+        tupleMap[field.name] = fieldValue
+      valMap(tupleMap)
+    else:
+      # Unnamed tuple: (1, 2, 3) - represent as array
+      var elements: seq[Value] = @[]
+      for elem in e.tupleElements:
+        elements.add(evalExpr(elem, env))
+      valArray(elements)
+
 # ------------------------------------------------------------------------------
 # Statement Execution
 # ------------------------------------------------------------------------------
@@ -491,7 +630,7 @@ proc execBlock(sts: seq[Stmt]; env: ref Env): ExecResult =
   var res = noReturn()
   for st in sts:
     res = execStmt(st, env)
-    if res.hasReturn:
+    if res.hasControlFlow():
       return res
   res
 
@@ -502,11 +641,37 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
     noReturn()
 
   of skVar:
-    defineVar(env, s.varName, evalExpr(s.varValue, env))
+    if s.isVarUnpack:
+      # Tuple unpacking: var (x, y, z) = getTuple()
+      let value = evalExpr(s.varValue, env)
+      if value.kind == vkArray:
+        # Unpack array elements to variables
+        for i, name in s.varNames:
+          if i < value.arr.len:
+            defineVar(env, name, value.arr[i])
+          else:
+            defineVar(env, name, valNil())
+      else:
+        quit "Cannot unpack non-array value in var unpacking"
+    else:
+      defineVar(env, s.varName, evalExpr(s.varValue, env))
     noReturn()
 
   of skLet:
-    defineVar(env, s.letName, evalExpr(s.letValue, env))
+    if s.isLetUnpack:
+      # Tuple unpacking: let (x, y, z) = getTuple()
+      let value = evalExpr(s.letValue, env)
+      if value.kind == vkArray:
+        # Unpack array elements to variables
+        for i, name in s.letNames:
+          if i < value.arr.len:
+            defineVar(env, name, value.arr[i])
+          else:
+            defineVar(env, name, valNil())
+      else:
+        quit "Cannot unpack non-array value in let unpacking"
+    else:
+      defineVar(env, s.letName, evalExpr(s.letValue, env))
     noReturn()
 
   of skConst:
@@ -537,6 +702,14 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
         target.map[indexVal.s] = value
       else:
         quit "Cannot index into non-array/map value"
+    of ekDot:
+      # Field assignment - update the field in the object (map)
+      let target = evalExpr(s.assignTarget.dotTarget, env)
+      if target.kind == vkMap:
+        # Update or add the field
+        target.map[s.assignTarget.dotField] = value
+      else:
+        quit "Cannot assign to field of non-object value"
     else:
       quit "Invalid assignment target"
     noReturn()
@@ -595,23 +768,124 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
       # Range value created by .. or ..< operators
       let startVal = toInt(iterableVal.map["start"])
       let endVal = toInt(iterableVal.map["end"])
-      for i in startVal .. endVal:
-        let loopEnv = newEnv(env)
-        defineVar(loopEnv, s.forVar, valInt(i))
-        let res = execBlock(s.forBody, loopEnv)
-        if res.hasReturn:
-          return res
+      let isInclusive = toBool(iterableVal.map["inclusive"])
+      
+      # Use inclusive or exclusive range based on the operator
+      if isInclusive:
+        for i in startVal .. endVal:
+          let loopEnv = newEnv(env)
+          # Support multi-variable iteration (e.g., for i, item in pairs(arr))
+          if s.forVars.len > 1:
+            # For simple ranges, only the index is available
+            # First var gets the index, others get nil
+            for idx, varName in s.forVars:
+              if idx == 0:
+                defineVar(loopEnv, varName, valInt(i))
+              else:
+                defineVar(loopEnv, varName, valNil())
+          else:
+            defineVar(loopEnv, s.forVar, valInt(i))
+          
+          let res = execBlock(s.forBody, loopEnv)
+          if res.hasReturn():
+            return res
+          elif res.hasBreak():
+            # Check if this break is for this loop (label matches or no label)
+            if res.label == "" or res.label == s.forLabel:
+              break
+            else:
+              # Break is for an outer loop, propagate it
+              return res
+          elif res.hasContinue():
+            # Check if this continue is for this loop (label matches or no label)
+            if res.label == "" or res.label == s.forLabel:
+              continue
+            else:
+              # Continue is for an outer loop, propagate it
+              return res
+      else:
+        for i in startVal ..< endVal:
+          let loopEnv = newEnv(env)
+          # Support multi-variable iteration
+          if s.forVars.len > 1:
+            for idx, varName in s.forVars:
+              if idx == 0:
+                defineVar(loopEnv, varName, valInt(i))
+              else:
+                defineVar(loopEnv, varName, valNil())
+          else:
+            defineVar(loopEnv, s.forVar, valInt(i))
+          
+          let res = execBlock(s.forBody, loopEnv)
+          if res.hasReturn():
+            return res
+          elif res.hasBreak():
+            if res.label == "" or res.label == s.forLabel:
+              break
+            else:
+              return res
+          elif res.hasContinue():
+            if res.label == "" or res.label == s.forLabel:
+              continue
+            else:
+              return res
     elif iterableVal.kind == vkInt:
       # Simple case: iterate from 0 to value-1 (backward compatibility)
       for i in 0 ..< iterableVal.i:
         let loopEnv = newEnv(env)
-        defineVar(loopEnv, s.forVar, valInt(i))
+        if s.forVars.len > 1:
+          for idx, varName in s.forVars:
+            if idx == 0:
+              defineVar(loopEnv, varName, valInt(i))
+            else:
+              defineVar(loopEnv, varName, valNil())
+        else:
+          defineVar(loopEnv, s.forVar, valInt(i))
         let res = execBlock(s.forBody, loopEnv)
-        if res.hasReturn:
+        if res.hasReturn():
           return res
+        elif res.hasBreak():
+          if res.label == "" or res.label == s.forLabel:
+            break
+          else:
+            return res
+        elif res.hasContinue():
+          if res.label == "" or res.label == s.forLabel:
+            continue
+          else:
+            return res
+    elif iterableVal.kind == vkArray:
+      # Iterate over array elements
+      for i, item in iterableVal.arr:
+        let loopEnv = newEnv(env)
+        if s.forVars.len > 1:
+          # Multi-variable: for idx, elem in array
+          for idx, varName in s.forVars:
+            if idx == 0:
+              defineVar(loopEnv, varName, valInt(i))
+            elif idx == 1:
+              defineVar(loopEnv, varName, item)
+            else:
+              defineVar(loopEnv, varName, valNil())
+        else:
+          # Single variable: for elem in array (just the element)
+          defineVar(loopEnv, s.forVar, item)
+        let res = execBlock(s.forBody, loopEnv)
+        if res.hasReturn():
+          return res
+        elif res.hasBreak():
+          if res.label == "" or res.label == s.forLabel:
+            break
+          else:
+            return res
+        elif res.hasContinue():
+          if res.label == "" or res.label == s.forLabel:
+            continue
+          else:
+            return res
     else:
       # For other cases, we could extend this to handle custom iterables
-      quit "Runtime Error: Cannot iterate over value in for loop (not a range or integer)"
+      quit "Runtime Error: Cannot iterate over value in for loop (not a range, integer, or array)"
 
     noReturn()
 
@@ -627,8 +901,22 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
       let res = execBlock(s.whileBody, env)
       
       # If body returns, propagate the return
-      if res.hasReturn:
+      if res.hasReturn():
         return res
+      elif res.hasBreak():
+        # Check if this break is for this loop (label matches or no label)
+        if res.label == "" or res.label == s.whileLabel:
+          break
+        else:
+          # Break is for an outer loop, propagate it
+          return res
+      elif res.hasContinue():
+        # Check if this continue is for this loop (label matches or no label)
+        if res.label == "" or res.label == s.whileLabel:
+          continue
+        else:
+          # Continue is for an outer loop, propagate it
+          return res
     
     noReturn()
 
@@ -645,7 +933,18 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
   of skBlock:
     # Explicit blocks create their own scope
     let blockEnv = newEnv(env)
-    return execBlock(s.stmts, blockEnv)
+    let res = execBlock(s.stmts, blockEnv)
+    
+    # Check if there's a break with a label targeting this block
+    if res.hasBreak() and res.label.len > 0:
+      # If the label matches this block's label, consume the break
+      if res.label == s.blockLabel:
+        return noReturn()
+      else:
+        # Propagate the break to outer blocks
+        return res
+    
+    return res
 
   of skDefer:
     # Defer statement - push to defer stack for execution at scope exit
@@ -656,6 +955,12 @@ proc execStmt*(s: Stmt; env: ref Env): ExecResult =
     # Type definition - for runtime, we just store it as metadata
     # In a real implementation, this would register the type in a type system
     noReturn()
+
+  of skBreak:
+    withBreak(s.breakLabel)
+
+  of skContinue:
+    withContinue(s.continueLabel)
 
 # ------------------------------------------------------------------------------
 # Program Execution

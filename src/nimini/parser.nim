@@ -71,6 +71,18 @@ proc parseType(p: var Parser): TypeNode =
     let innerType = parseType(p)
     return newPointerType(innerType)
   
+  # Check for object type definition: object
+  # Note: This is for inline object types in type declarations
+  # The full object parsing is done in parseObjectType
+  if typeName == "object":
+    # Simple placeholder - full parsing done elsewhere
+    return newObjectType(@[])
+  
+  # Check for enum type definition: enum
+  if typeName == "enum":
+    # Simple placeholder - full parsing done elsewhere
+    return newEnumType(@[])
+  
   # Check for generic types like UncheckedArray[T] or seq[T]
   if p.cur().kind == tkLBracket:
     discard p.advance()
@@ -83,17 +95,106 @@ proc parseType(p: var Parser): TypeNode =
   
   return newSimpleType(typeName)
 
+proc parseObjectType(p: var Parser): TypeNode =
+  ## Parse object type definition with fields
+  ## Expects: object <newline> <indent> field1: Type1 <newline> field2: Type2 ...
+  discard expect(p, tkIdent, "Expected 'object'")  # Already consumed 'object'
+  
+  var fields: seq[tuple[name: string, fieldType: TypeNode]] = @[]
+  
+  # Expect newline then indent
+  discard expect(p, tkNewline, "Expected newline after 'object'")
+  if not match(p, tkIndent):
+    # Empty object
+    return newObjectType(fields)
+  
+  # Parse fields
+  while not p.atEnd():
+    if match(p, tkDedent):
+      break
+    if p.cur().kind == tkNewline:
+      discard p.advance()
+      continue
+    
+    # Parse field: name: Type
+    let fieldName = expect(p, tkIdent, "Expected field name").lexeme
+    discard expect(p, tkColon, "Expected ':' after field name")
+    let fieldType = parseType(p)
+    fields.add((fieldName, fieldType))
+    discard match(p, tkNewline)
+  
+  return newObjectType(fields)
+
+proc parseEnumType(p: var Parser): TypeNode =
+  ## Parse enum type definition with values
+  ## Expects: enum <newline> <indent> Value1 <newline> Value2 = 10 ...
+  discard expect(p, tkIdent, "Expected 'enum'")  # Already consumed 'enum'
+  
+  var enumValues: seq[tuple[name: string, value: int]] = @[]
+  var nextOrdinal = 0
+  
+  # Expect newline then indent
+  discard expect(p, tkNewline, "Expected newline after 'enum'")
+  if not match(p, tkIndent):
+    # Empty enum
+    return newEnumType(enumValues)
+  
+  # Parse enum values
+  while not p.atEnd():
+    if match(p, tkDedent):
+      break
+    if p.cur().kind == tkNewline:
+      discard p.advance()
+      continue
+    
+    # Parse value: Name or Name = ordinal
+    let valueName = expect(p, tkIdent, "Expected enum value name").lexeme
+    var ordinal = nextOrdinal
+    
+    if p.cur().kind == tkOp and p.cur().lexeme == "=":
+      discard p.advance()
+      if p.cur().kind != tkInt:
+        quit "Expected integer ordinal value for enum at line " & $p.cur().line
+      ordinal = parseInt(p.cur().lexeme)
+      discard p.advance()
+    
+    enumValues.add((valueName, ordinal))
+    nextOrdinal = ordinal + 1
+    discard match(p, tkNewline)
+  
+  return newEnumType(enumValues)
+
 proc parsePrefix(p: var Parser): Expr =
   let t = p.cur()
 
   case t.kind
   of tkInt:
     discard p.advance()
-    newInt(parseInt(t.lexeme), t.line, t.col)
+    # Extract type suffix if present (e.g., "123'i32" -> value=123, suffix=i32)
+    let lexeme = t.lexeme
+    var typeSuffix = ""
+    var numPart = lexeme
+    
+    let apostrophePos = lexeme.find('\'')
+    if apostrophePos >= 0:
+      numPart = lexeme[0..<apostrophePos]
+      typeSuffix = lexeme[apostrophePos+1..^1]
+    
+    newInt(parseInt(numPart), t.line, t.col, typeSuffix)
 
   of tkFloat:
     discard p.advance()
-    newFloat(parseFloat(t.lexeme), t.line, t.col)
+    # Extract type suffix if present (e.g., "3.14'f32" -> value=3.14, suffix=f32)
+    let lexeme = t.lexeme
+    var typeSuffix = ""
+    var numPart = lexeme
+    
+    let apostrophePos = lexeme.find('\'')
+    if apostrophePos >= 0:
+      numPart = lexeme[0..<apostrophePos]
+      typeSuffix = lexeme[apostrophePos+1..^1]
+    
+    newFloat(parseFloat(numPart), t.line, t.col, typeSuffix)
 
   of tkString:
     discard p.advance()
@@ -130,13 +231,92 @@ proc parsePrefix(p: var Parser): Expr =
     discard p.advance()
     if p.cur().kind == tkLParen:
       discard p.advance()
+      
+      # Skip newlines and indents after opening paren
+      while p.cur().kind in {tkNewline, tkIndent}:
+        discard p.advance()
+      
       var args: seq[Expr] = @[]
+      var objFields: seq[tuple[name: string, value: Expr]] = @[]
+      var isObjConstr = false
+      
       if p.cur().kind != tkRParen:
-        args.add(parseExpr(p))
-        while match(p, tkComma):
+        # Peek ahead to see if this is object construction (field: value) or function call
+        # Save position for potential backtrack
+        let savedPos = p.pos
+        
+        # Skip any leading whitespace for lookahead
+        while p.cur().kind in {tkNewline, tkIndent}:
+          discard p.advance()
+        
+        # Check if first argument looks like named field (ident followed by colon)
+        if p.cur().kind == tkIdent:
+          let possibleField = p.cur().lexeme
+          discard p.advance()
+          # Skip whitespace between ident and potential colon
+          while p.cur().kind in {tkNewline, tkIndent}:
+            discard p.advance()
+          if p.cur().kind == tkColon:
+            # This is object construction!
+            isObjConstr = true
+            p.pos = savedPos  # Reset to parse properly
+            # Skip whitespace again after reset
+            while p.cur().kind in {tkNewline, tkIndent}:
+              discard p.advance()
+          else:
+            # Not object construction, reset and parse as call
+            p.pos = savedPos
+        
+        if isObjConstr:
+          # Parse as object construction Type(field: value, ...)
+          let fieldName = expect(p, tkIdent, "Expected field name").lexeme
+          discard expect(p, tkColon, "Expected ':' after field name")
+          # Skip newlines/indents after colon
+          while p.cur().kind in {tkNewline, tkIndent}:
+            discard p.advance()
+          let fieldValue = parseExpr(p)
+          objFields.add((fieldName, fieldValue))
+          
+          # Skip trailing whitespace after field value
+          while p.cur().kind in {tkNewline, tkIndent, tkDedent}:
+            discard p.advance()
+          
+          while match(p, tkComma):
+            # Skip newlines/indents after comma
+            while p.cur().kind in {tkNewline, tkIndent}:
+              discard p.advance()
+            # Check for closing paren (trailing comma case)
+            if p.cur().kind in {tkRParen, tkDedent}:
+              # Skip any dedents before the closing paren
+              while p.cur().kind == tkDedent:
+                discard p.advance()
+              break
+            let fname = expect(p, tkIdent, "Expected field name").lexeme
+            discard expect(p, tkColon, "Expected ':' after field name")
+            # Skip newlines/indents after colon
+            while p.cur().kind in {tkNewline, tkIndent}:
+              discard p.advance()
+            let fvalue = parseExpr(p)
+            objFields.add((fname, fvalue))
+            # Skip trailing whitespace after field value
+            while p.cur().kind in {tkNewline, tkIndent, tkDedent}:
+              discard p.advance()
+        else:
+          # Parse as regular function call
           args.add(parseExpr(p))
+          while match(p, tkComma):
+            args.add(parseExpr(p))
+      
+      # Skip newlines/dedents before closing paren
+      while p.cur().kind in {tkNewline, tkDedent}:
+        discard p.advance()
+      
       discard expect(p, tkRParen, "Expected ')'")
-      newCall(t.lexeme, args, t.line, t.col)
+      
+      if isObjConstr:
+        newObjConstr(t.lexeme, objFields, t.line, t.col)
+      else:
+        newCall(t.lexeme, args, t.line, t.col)
     else:
       newIdent(t.lexeme, t.line, t.col)
 
@@ -149,10 +329,64 @@ proc parsePrefix(p: var Parser): Expr =
       quit "Unexpected prefix operator at line " & $t.line
 
   of tkLParen:
+    # Parse tuple literal or parenthesized expression
     discard p.advance()
-    let e = parseExpr(p)
-    discard expect(p, tkRParen, "Expected ')'")
-    e
+    let startLine = t.line
+    let startCol = t.col
+    
+    # Empty tuple: ()
+    if p.cur().kind == tkRParen:
+      discard p.advance()
+      return newTuple(@[], startLine, startCol)
+    
+    # Check if this is a named tuple by looking ahead
+    var isNamedTuple = false
+    if p.cur().kind == tkIdent:
+      let savedPos = p.pos
+      discard p.advance()
+      if p.cur().kind == tkColon:
+        isNamedTuple = true
+      p.pos = savedPos
+    
+    if isNamedTuple:
+      # Parse named tuple: (name: "Bob", age: 30)
+      var fields: seq[tuple[name: string, value: Expr]] = @[]
+      
+      let fieldName = expect(p, tkIdent, "Expected field name").lexeme
+      discard expect(p, tkColon, "Expected ':' after field name")
+      let fieldValue = parseExpr(p)
+      fields.add((fieldName, fieldValue))
+      
+      while match(p, tkComma):
+        if p.cur().kind == tkRParen:
+          break  # Allow trailing comma
+        let fname = expect(p, tkIdent, "Expected field name").lexeme
+        discard expect(p, tkColon, "Expected ':' after field name")
+        let fvalue = parseExpr(p)
+        fields.add((fname, fvalue))
+      
+      discard expect(p, tkRParen, "Expected ')'")
+      return newNamedTuple(fields, startLine, startCol)
+    else:
+      # Parse unnamed tuple or parenthesized expression
+      var elements: seq[Expr] = @[]
+      elements.add(parseExpr(p))
+      
+      # Check if there's a comma (making it a tuple)
+      if match(p, tkComma):
+        # This is a tuple
+        if p.cur().kind != tkRParen:
+          elements.add(parseExpr(p))
+          while match(p, tkComma):
+            if p.cur().kind == tkRParen:
+              break  # Allow trailing comma
+            elements.add(parseExpr(p))
+        discard expect(p, tkRParen, "Expected ')'")
+        return newTuple(elements, startLine, startCol)
+      else:
+        # Single expression in parentheses
+        discard expect(p, tkRParen, "Expected ')'")
+        return elements[0]
 
   of tkLBracket:
     discard p.advance()
@@ -203,6 +437,33 @@ proc parseExpr(p: var Parser; prec=0): Expr =
   while true:
     let cur = p.cur()
     
+    # Handle dot notation for field access or method calls
+    if cur.kind == tkDot:
+      discard p.advance()
+      let fieldName = expect(p, tkIdent, "Expected field name after '.'").lexeme
+      
+      # Check if this is a method call (followed by parentheses)
+      if p.cur().kind == tkLParen:
+        discard p.advance()
+        
+        # Parse method arguments
+        var args: seq[Expr] = @[]
+        if p.cur().kind != tkRParen:
+          args.add(parseExpr(p))
+          while match(p, tkComma):
+            args.add(parseExpr(p))
+        
+        discard expect(p, tkRParen, "Expected ')'")
+        
+        # Create a method call node (represented as a call with the object as first argument)
+        # For backend generation, we'll handle this specially
+        args.insert(left, 0)  # Insert object as first argument
+        left = newCall(fieldName, args, cur.line, cur.col)
+      else:
+        # Regular field access
+        left = newDot(left, fieldName, cur.line, cur.col)
+      continue
+    
     # Handle array indexing
     if cur.kind == tkLBracket:
       discard p.advance()
@@ -237,6 +498,36 @@ proc parseExpr(p: var Parser; prec=0): Expr =
 
 proc parseVarStmt(p: var Parser; isLet: bool; isConst: bool = false): Stmt =
   let kw = advance(p)
+  
+  # Check if this is tuple unpacking: let (x, y) = ...
+  if p.cur().kind == tkLParen:
+    if isConst:
+      quit "Tuple unpacking not supported for const at line " & $kw.line
+    
+    discard p.advance()
+    var names: seq[string] = @[]
+    names.add(expect(p, tkIdent, "Expected identifier").lexeme)
+    
+    while match(p, tkComma):
+      names.add(expect(p, tkIdent, "Expected identifier").lexeme)
+    
+    discard expect(p, tkRParen, "Expected ')'")
+    
+    # Optional type annotation
+    var typeAnnotation: TypeNode = nil
+    if p.cur().kind == tkColon:
+      discard p.advance()
+      typeAnnotation = parseType(p)
+    
+    discard expect(p, tkOp, "Expected '='")
+    let val = parseExpr(p)
+    
+    if isLet:
+      return newLetUnpack(names, val, typeAnnotation, kw.line, kw.col)
+    else:
+      return newVarUnpack(names, val, typeAnnotation, kw.line, kw.col)
+  
+  # Regular variable declaration
   let nameTok = expect(p, tkIdent, "Expected identifier")
   
   # Optional type annotation
@@ -293,8 +584,18 @@ proc parseIf(p: var Parser): Stmt =
 
 proc parseFor(p: var Parser): Stmt =
   let tok = advance(p)
-  let varTok = expect(p, tkIdent, "Expected loop variable name")
-
+  
+  # Check for multiple loop variables: for i, item in ...
+  var varNames: seq[string] = @[]
+  let firstVarTok = expect(p, tkIdent, "Expected loop variable name")
+  varNames.add(firstVarTok.lexeme)
+  
+  # Check if there are more variables (comma-separated)
+  while p.cur().kind == tkComma:
+    discard p.advance()
+    let varTok = expect(p, tkIdent, "Expected loop variable name")
+    varNames.add(varTok.lexeme)
+  
   # Expect "in" keyword
   if p.cur().kind != tkIdent or p.cur().lexeme != "in":
     quit "Parse Error: Expected 'in' after for variable at line " & $p.cur().line
@@ -307,7 +608,11 @@ proc parseFor(p: var Parser): Stmt =
   discard expect(p, tkNewline, "Expected newline")
 
   let body = parseBlock(p)
-  newFor(varTok.lexeme, iterableExpr, body, tok.line, tok.col)
+  
+  if varNames.len == 1:
+    newFor(varNames[0], iterableExpr, body, "", tok.line, tok.col)
+  else:
+    newForMulti(varNames, iterableExpr, body, "", tok.line, tok.col)
 
 proc parseWhile(p: var Parser): Stmt =
   let tok = advance(p)
@@ -315,7 +620,7 @@ proc parseWhile(p: var Parser): Stmt =
   discard expect(p, tkColon, "Expected ':'")
   discard expect(p, tkNewline, "Expected newline")
   let body = parseBlock(p)
-  newWhile(cond, body, tok.line, tok.col)
+  newWhile(cond, body, "", tok.line, tok.col)
 
 proc parseProc(p: var Parser): Stmt =
   let tok = advance(p)
@@ -371,13 +676,6 @@ proc parseReturn(p: var Parser): Stmt =
   let tok = advance(p)
   let v = parseExpr(p)
   newReturn(v, tok.line, tok.col)
-
-proc parseBlockStmt(p: var Parser): Stmt =
-  let tok = advance(p)
-  discard expect(p, tkColon, "Expected ':'")
-  discard expect(p, tkNewline, "Expected newline")
-  let body = parseBlock(p)
-  newBlock(body, tok.line, tok.col)
 
 proc parseCase(p: var Parser): Stmt =
   let tok = advance(p)  # consume 'case'
@@ -483,7 +781,16 @@ proc parseStmt(p: var Parser): Stmt =
       discard p.advance()
       let typeName = expect(p, tkIdent, "Expected type name").lexeme
       discard expect(p, tkOp, "Expected '='")
-      let typeValue = parseType(p)
+      
+      # Check if this is an object or enum type
+      let typeValue = 
+        if p.cur().kind == tkIdent and p.cur().lexeme == "object":
+          parseObjectType(p)
+        elif p.cur().kind == tkIdent and p.cur().lexeme == "enum":
+          parseEnumType(p)
+        else:
+          parseType(p)
+      
       return newType(typeName, typeValue, t.line, t.col)
     of "if": return parseIf(p)
     of "case": return parseCase(p)
@@ -491,7 +798,70 @@ proc parseStmt(p: var Parser): Stmt =
     of "while": return parseWhile(p)
     of "proc": return parseProc(p)
     of "return": return parseReturn(p)
-    of "block": return parseBlockStmt(p)
+    of "block":
+      # Check for labeled block with for/while
+      let blockTok = p.advance()
+      
+      # Check if there's a label
+      var label = ""
+      if p.cur().kind == tkIdent:
+        let savedPos = p.pos
+        let potentialLabel = p.advance()
+        
+        # Check if followed by colon
+        if p.cur().kind == tkColon:
+          label = potentialLabel.lexeme
+          discard p.advance()  # consume colon
+          
+          # Check if this is a labeled loop
+          if p.cur().kind == tkNewline:
+            discard p.advance()
+          
+          if p.cur().kind == tkIdent:
+            case p.cur().lexeme
+            of "for":
+              var forStmt = parseFor(p)
+              forStmt.forLabel = label
+              return forStmt
+            of "while":
+              var whileStmt = parseWhile(p)
+              whileStmt.whileLabel = label
+              return whileStmt
+            else:
+              # Regular labeled block
+              let body = parseBlock(p)
+              return newBlock(body, label, blockTok.line, blockTok.col)
+          else:
+            # Regular labeled block
+            if p.cur().kind == tkNewline:
+              discard p.advance()
+            let body = parseBlock(p)
+            return newBlock(body, label, blockTok.line, blockTok.col)
+        else:
+          # Not a label, restore and parse as regular block
+          p.pos = savedPos
+      
+      # Regular block without label
+      discard expect(p, tkColon, "Expected ':'")
+      discard expect(p, tkNewline, "Expected newline")
+      let body = parseBlock(p)
+      return newBlock(body, "", blockTok.line, blockTok.col)
+    of "break":
+      discard p.advance()
+      # Check if there's a label (identifier) after break
+      var label = ""
+      if p.cur().kind == tkIdent:
+        label = p.cur().lexeme
+        discard p.advance()
+      return newBreak(label, t.line, t.col)
+    of "continue":
+      discard p.advance()
+      # Check if there's a label (identifier) after continue
+      var label = ""
+      if p.cur().kind == tkIdent:
+        label = p.cur().lexeme
+        discard p.advance()
+      return newContinue(label, t.line, t.col)
     else:
       # Parse as expression first (could be assignment target or just expression)
       let e = parseExpr(p)

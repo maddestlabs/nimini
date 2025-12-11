@@ -215,11 +215,23 @@ proc tokenizeDsl*(src: string): seq[Token] =
         else:
           break
 
-      let lex = src[start ..< i]
+      # Check for type suffix (e.g., 123'i32, 3.14'f32)
+      var typeSuffix = ""
+      if i < src.len and src[i] == '\'':
+        inc i; inc col  # Skip the apostrophe
+        let suffixStart = i
+        # Read the type suffix (e.g., i32, f64, u8)
+        while i < src.len and src[i].isIdentChar():
+          inc i; inc col
+        typeSuffix = src[suffixStart ..< i]
+
+      let numPart = src[start ..< (if typeSuffix.len > 0: i - typeSuffix.len - 1 else: i)]
+      let lexeme = if typeSuffix.len > 0: numPart & "'" & typeSuffix else: numPart
+      
       if sawDot:
-        addToken(res, tkFloat, lex, line, startCol)
+        addToken(res, tkFloat, lexeme, line, startCol)
       else:
-        addToken(res, tkInt, lex, line, startCol)
+        addToken(res, tkInt, lexeme, line, startCol)
       continue
 
     # ------------------------------

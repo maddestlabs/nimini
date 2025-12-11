@@ -102,6 +102,14 @@ method generateWhileLoop*(backend: CodegenBackend; condition: string; indent: st
   ## Generate code for a while loop
   quit "generateWhileLoop not implemented for backend: " & backend.name
 
+method generateBreak*(backend: CodegenBackend; label: string; indent: string): string {.base.} =
+  ## Generate code for a break statement
+  quit "generateBreak not implemented for backend: " & backend.name
+
+method generateContinue*(backend: CodegenBackend; label: string; indent: string): string {.base.} =
+  ## Generate code for a continue statement
+  quit "generateContinue not implemented for backend: " & backend.name
+
 # ------------------------------------------------------------------------------
 # Function/Procedure Generation
 # ------------------------------------------------------------------------------
@@ -125,6 +133,14 @@ method generateImport*(backend: CodegenBackend; module: string): string {.base.}
 method generateComment*(backend: CodegenBackend; text: string; indent: string = ""): string {.base.} =
   ## Generate code for a comment
   quit "generateComment not implemented for backend: " & backend.name
+
+# ------------------------------------------------------------------------------
+# Type Generation
+# ------------------------------------------------------------------------------
+
+method generateEnumType*(backend: CodegenBackend; name: string; values: seq[tuple[name: string, value: int]]; indent: string): string {.base.} =
+  ## Generate code for an enum type definition
+  quit "generateEnumType not implemented for backend: " & backend.name
 
 # ------------------------------------------------------------------------------
 # Program Structure

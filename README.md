@@ -166,6 +166,60 @@ registerExtension(mathExt)
 
 See [examples/universal_extension_example.nim](examples/universal_extension_example.nim) for a complete example.
 
+## String Operations
+
+Nimini provides comprehensive string handling with cross-backend support:
+
+### Stringify Operator (`$`)
+
+Convert any value to a string:
+```nim
+var num = 42
+var str = $num  # "42"
+echo "Value: " & $num
+```
+
+### String Slicing
+
+Extract substrings using range operators:
+```nim
+var text = "Hello, World!"
+var hello = text[0..4]   # "Hello" (inclusive)
+var world = text[7..<12] # "World" (exclusive)
+```
+
+### String Properties and Methods
+
+```nim
+var name = "Nimini"
+var length = name.len              # 6
+var upper = name.toUpper()         # "NIMINI"
+var lower = name.toLower()         # "nimini"
+var trimmed = "  text  ".strip()   # "text"
+```
+
+All string operations work in both interpreted mode and transpiled code, generating appropriate backend-specific syntax. See [docs/STRING_OPERATIONS.md](docs/STRING_OPERATIONS.md) for complete documentation.
+
+### Type Suffixes on Numeric Literals
+
+Nimini supports Nim-style type suffixes for explicit type specification:
+
+```nim
+var radius = 5'i32          # 32-bit integer
+var pi = 3.14'f32           # 32-bit float
+var byte = 255'u8           # 8-bit unsigned
+var precise = 2.718'f64     # 64-bit float
+
+var halfSize = digitSize / 2'f32  # Force float division
+```
+
+**Supported suffixes:**
+- Integer: `'i8`, `'i16`, `'i32`, `'i64`
+- Unsigned: `'u8`, `'u16`, `'u32`, `'u64`
+- Float: `'f32`, `'f64`
+
+Type suffixes are preserved in Nim codegen, omitted in Python/JavaScript (dynamic typing). See [docs/TYPE_SUFFIXES.md](docs/TYPE_SUFFIXES.md) for full documentation.
+
 ## History and Future
 
 Nimini started in a markdown based story telling engine. It was decoupled for use with the terminal version of that same engine, so both engines share the same, core scripting functionality.

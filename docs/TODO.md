@@ -2,11 +2,11 @@
 
 ## Recommended Implementation Order
 
-1. **Case statements** - High utility, moderate complexity
-2. **Break/continue** - Essential loop control, easy to add
+1. **Case statements** - High utility, moderate complexity ✅ **COMPLETED**
+2. **Break/continue** - Essential loop control, easy to add ✅ **COMPLETED**
 3. **Tuples** - Very useful, moderate complexity
 4. **Exception handling** (basic) - Important for robust scripts
-5. **Enums** - Great for DSLs, moderate complexity
+5. **Enums** - Great for DSLs, moderate complexity ✅ **COMPLETED**
 6. **String slicing** - High utility, low complexity
 7. **Object types** (simple) - Enables structured data
 8. **Sets** - Useful for collections
@@ -20,7 +20,7 @@
 - **Basic types**: int, float, string, bool, arrays, maps
 - **Variables**: `var`, `let`, `const`
 - **Operators**: arithmetic (`+`, `-`, `*`, `/`, `%`), comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`), logical (`and`, `or`, `not`), string concatenation (`&`)
-- **Control flow**: `if`/`elif`/`else`, `case`/`of`/`elif`/`else`, `while`, `for`
+- **Control flow**: `if`/`elif`/`else`, `case`/`of`/`elif`/`else`, `while`, `for`, `break`, `continue`
 - **Functions**: `proc` definitions, calls, return statements
 - **Type annotations**: Basic type system with `TypeNode`
 - **Pointers**: `ptr`, `addr`, dereference (`[]`)
@@ -42,26 +42,30 @@
    - ~~Optional else branch~~
    - Supports integers, floats, strings (ordinal types and strings per Nim manual)
 
-2. **Break/continue** statements
-   - `break` to exit loops early
-   - `continue` to skip to next iteration
-   - Loop labels for nested loops
+2. ~~**Break/continue** statements~~ ✅ **COMPLETED** (Nim manual section 3.8)
+   - ~~`break` to exit loops early~~
+   - ~~`continue` to skip to next iteration~~
+   - Supports optional labels for nested loops (parsed but labels not fully implemented in all backends)
 
 3. **Tuples** (Nim manual section on structured types)
    - Tuple literals: `(1, "hello", true)`
    - Tuple unpacking: `let (x, y) = getTuple()`
    - Named tuples: `(name: "Bob", age: 30)`
 
-2. **Object types** (Nim manual structured types)
-   - Object definitions with fields
-   - Field access: `obj.fieldName`
-   - Object construction
+4. **Object types** (Nim manual structured types) ✅ **PARTIALLY COMPLETED**
+   - ✅ Object definitions with fields
+   - ✅ Field access: `obj.fieldName`
+   - ✅ Object construction
    - *Skip*: Inheritance (too complex for scripting)
 
-3. **Enums** (Nim manual ordinal types)
-   - Enum definitions: `type Color = enum red, green, blue`
-   - Enum values and comparisons
-   - Useful for DSLs and configuration
+5. ~~**Enums**~~ ✅ **COMPLETED** (Nim manual ordinal types)
+   - ~~Enum definitions: `type Color = enum red, green, blue`~~
+   - ~~Enum values with auto-increment ordinals~~
+   - ~~Explicit ordinal values: `type Status = enum ok = 200, notFound = 404`~~
+   - ~~Mixed ordinal values (auto + explicit)~~
+   - ~~Enum values in expressions and case statements~~
+   - ~~Code generation for Nim, Python (using enum.Enum), and JavaScript (frozen objects)~~
+   - ~~Useful for DSLs and configuration~~
 
 4. **String operations** (from stdlib)
    - String slicing: `str[1..5]`
