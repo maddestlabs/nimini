@@ -1,4 +1,4 @@
-import ../src/nimini
+import ../nimini
 
 initRuntime()
 let code = """

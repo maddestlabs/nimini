@@ -1,10 +1,10 @@
 # Python Frontend - Parse Python syntax into Nimini AST
 # Supports a subset of Python for library interop
 
-import nimini/frontend
-import nimini/tokenizer
-import nimini/parser
-import nimini/ast
+import ../frontend
+import ../tokenizer
+import ../parser
+import ../ast
 import std/[strutils, tables]
 
 export frontend

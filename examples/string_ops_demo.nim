@@ -1,9 +1,9 @@
 ## Nimini String Operations Example
 ## Demonstrates $ operator, string slicing, and string methods
 
-import ../src/nimini
-import ../src/nimini/backends/python_backend
-import ../src/nimini/backends/javascript_backend
+import ../nimini
+import ../nimini/backends/python_backend
+import ../nimini/backends/javascript_backend
 
 proc main() =
   echo "=== Nimini String Operations Example ==="

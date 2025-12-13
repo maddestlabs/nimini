@@ -1,7 +1,8 @@
 # String Operations Example for Nimini DSL
 # Demonstrates string slicing, $ operator, and string methods
 
-import nimini
+import ../nimini
+import std/strutils
 
 proc main() =
   # Example 1: Using the $ stringify operator

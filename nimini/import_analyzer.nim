@@ -3,8 +3,8 @@
 ## Analyzes Nimini AST to determine required platform bindings
 ## Used for generating optimized native Nim code with minimal imports
 
-# import ../platform/binding_metadata  # TODO: platform bindings not yet implemented
-import nimini/ast
+import ../platform/binding_metadata
+import ast
 import tables, sets, strutils
 
 proc analyzeFunctionCalls*(ast: AstNode): seq[string] =

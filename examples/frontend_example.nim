@@ -1,7 +1,7 @@
 ## Frontend Abstraction Layer Example
 ## Demonstrates the new multi-language frontend system
 
-import ../src/nimini
+import ../nimini
 import std/strutils
 
 echo "=" .repeat(70)

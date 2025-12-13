@@ -1,7 +1,7 @@
 ## Multi-Backend Code Generation Example
 ## Demonstrates how to generate code for multiple target languages from the same Nimini DSL
 
-import ../src/nimini
+import ../nimini
 import std/strutils
 
 # Define a simple Nimini DSL program

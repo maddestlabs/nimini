@@ -1,6 +1,6 @@
 ## Test lambda and do notation support
 
-import src/nimini
+import ../nimini
 
 echo "=== Test 1: Simple Lambda Creation ==="
 let code1 = """

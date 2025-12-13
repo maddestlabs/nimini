@@ -1,8 +1,8 @@
 # JavaScript Backend for Code Generation
 # Generates JavaScript (ES6+) code from Nimini AST
 
-import nimini/backend
-import nimini/ast
+import ../backend
+import ../ast
 import std/strutils
 
 type

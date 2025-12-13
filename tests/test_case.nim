@@ -1,6 +1,6 @@
 ## Test case statements in Nimini
 
-import ../src/nimini
+import ../nimini
 import std/[unittest, strutils]
 
 suite "Case Statement Tests":

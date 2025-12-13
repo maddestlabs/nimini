@@ -1,6 +1,6 @@
 # Test array and indexing support in Nimini
 
-import ../src/nimini
+import ../nimini
 
 let code = """
 let nums = [1, 2, 3, 4, 5]

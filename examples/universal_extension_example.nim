@@ -1,7 +1,7 @@
 ## Multi-Backend Extension Example
 ## Demonstrates how to create a codegen extension that supports multiple backends
 
-import ../src/nimini
+import ../nimini
 import std/[strutils, math]
 
 proc sqrt(env: ref Env; args: seq[Value]): Value {.nimini, gcsafe.} =

@@ -1,7 +1,7 @@
 ## Example: Using case statements in Nimini
 ## This demonstrates the case/of/else syntax with various patterns
 
-import ../src/nimini
+import ../nimini
 
 # Example 1: Simple case with integers
 echo "=== Example 1: Basic integer case ==="

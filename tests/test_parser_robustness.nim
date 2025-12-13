@@ -1,6 +1,6 @@
 ## Test parser robustness with various indentation scenarios
 
-import ../src/nimini/[tokenizer, parser]
+import ../nimini/[tokenizer, parser]
 
 proc testCase(name: string; code: string; shouldSucceed: bool = true) =
   echo "Testing: ", name

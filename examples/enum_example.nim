@@ -1,8 +1,8 @@
 ## Example demonstrating enum types in Nimini
 ## Shows basic enum definitions, explicit values, and usage in case statements
 
-import ../src/nimini
-import ../src/nimini/backends/[nim_backend, python_backend, javascript_backend]
+import ../nimini
+import ../nimini/backends/[nim_backend, python_backend, javascript_backend]
 import std/strutils
 
 # Example 1: Basic enum type with auto-incremented values

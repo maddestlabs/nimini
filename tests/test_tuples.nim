@@ -1,5 +1,5 @@
 # Test tuples in Nimini
-import ../src/nimini
+import ../nimini
 
 # Test 1: Simple unnamed tuple literal
 echo "Test 1: Unnamed tuple literal"

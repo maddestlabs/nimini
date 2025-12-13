@@ -1,7 +1,7 @@
 # Test Type Suffixes
 # Tests type suffix support on numeric literals
 
-import ../src/nimini
+import ../nimini
 
 proc main() =
   echo "=== Testing Type Suffix Support ==="

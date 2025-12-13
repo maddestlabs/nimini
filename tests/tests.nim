@@ -3,7 +3,7 @@
 import unittest
 import sequtils
 import std/[tables, strutils]
-import ../src/nimini
+import ../nimini
 
 suite "Tokenizer Tests":
   test "tokenize simple variable":

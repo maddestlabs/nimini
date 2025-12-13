@@ -1,7 +1,7 @@
 # Test file for Nimini string operations
 # Tests string slicing, $ operator, and common string methods
 
-import ../src/nimini
+import ../nimini
 
 # Test 1: $ stringify operator
 proc testStringifyOperator() =

@@ -1,6 +1,6 @@
 ## Complete Lambda Example - Demonstrating All Features
 
-import ../src/nimini
+import ../nimini
 import std/strutils
 
 echo "=" .repeat(70)

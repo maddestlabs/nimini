@@ -3,7 +3,6 @@ version       = "0.1.0"
 author        = "Maddest Labs"
 description   = "Nimini - Lightweight Nim-inspired DSL for interactive applications"
 license       = "MIT"
-srcDir        = "src"
 installDirs   = @["nimini"]
 installFiles  = @["nimini.nim"]
 skipDirs      = @["tests", "examples", "docs"]
@@ -40,7 +39,7 @@ task example_loops, "Run loop example":
   exec "nim c -r examples/loop_examples.nim"
 
 task docs, "Generate documentation":
-  exec "nim doc --project --index:on --git.url:https://github.com/maddestlabs/nimini --git.commit:main --outdir:docs src/nimini.nim"
+  exec "nim doc --project --index:on --git.url:https://github.com/maddestlabs/nimini --git.commit:main --outdir:docs nimini.nim"
 
 task clean, "Clean build artifacts":
   exec "rm -rf nimcache"

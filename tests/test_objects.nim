@@ -1,6 +1,6 @@
 ## Test object types, object construction, and field access
 
-import ../src/nimini
+import ../nimini
 import std/[unittest, strutils]
 
 suite "Object Type Tests":

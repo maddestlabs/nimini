@@ -1,5 +1,5 @@
 import std/[unittest, strutils]
-import ../src/nimini/[tokenizer, parser, runtime]
+import ../nimini/[tokenizer, parser, runtime]
 
 suite "Break and Continue Statements":
   setup:

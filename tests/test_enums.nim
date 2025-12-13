@@ -1,6 +1,6 @@
 ## Test enum types, enum values, and enum comparisons
 
-import ../src/nimini
+import ../nimini
 import std/[unittest, strutils]
 
 suite "Enum Type Tests":

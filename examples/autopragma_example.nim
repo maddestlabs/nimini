@@ -1,7 +1,7 @@
 ## Example demonstrating automatic proc registration using {.nimini.} pragma
 
-import ../src/nimini
-import ../src/nimini/autopragma
+import ../nimini
+import ../nimini/autopragma
 
 # Define some Nim procs that we want to expose to Nimini scripts
 # Simply mark them with {.nimini.} pragma

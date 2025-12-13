@@ -1,6 +1,6 @@
 # Tests for Frontend Abstraction Layer
 
-import ../src/nimini
+import ../nimini
 import std/[unittest, strutils]
 
 suite "Frontend Abstraction Layer":

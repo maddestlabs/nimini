@@ -1,4 +1,4 @@
-import ../src/nimini
+import ../nimini
 
 let nimCode = """
 var x = 15

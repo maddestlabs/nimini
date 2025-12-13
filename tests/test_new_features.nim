@@ -1,6 +1,6 @@
 ## Test new features: string interpolation, var params, do notation
 
-import src/nimini
+import ../nimini
 
 echo "Starting tests..."
 echo ""

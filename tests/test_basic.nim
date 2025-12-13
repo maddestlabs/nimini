@@ -1,4 +1,4 @@
-import ../src/nimini
+import ../nimini
 
 echo "Testing basic runtime..."
 initRuntime()

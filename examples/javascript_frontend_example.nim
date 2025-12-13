@@ -1,7 +1,7 @@
 ## JavaScript Frontend Example
 ## Demonstrates parsing JavaScript code and generating to multiple backends
 
-import ../src/nimini
+import ../nimini
 import std/strutils
 
 echo "=" .repeat(70)

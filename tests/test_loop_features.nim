@@ -3,7 +3,7 @@
 
 import unittest
 import std/strutils
-import ../src/nimini
+import ../nimini
 
 echo "Running loop feature tests..."
 

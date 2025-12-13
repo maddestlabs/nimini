@@ -1,7 +1,7 @@
 ## Python Frontend Example
 ## Demonstrates parsing Python code and generating to multiple backends
 
-import ../src/nimini
+import ../nimini
 import std/strutils
 
 echo "=" .repeat(70)

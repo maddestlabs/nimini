@@ -1,6 +1,6 @@
 ## Test the exact raylib-style example from TODO_RAYLIB.md
 
-import ../src/nimini
+import ../nimini
 import std/strutils
 
 let exactExample = """

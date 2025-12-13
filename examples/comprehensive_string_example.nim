@@ -1,9 +1,9 @@
 ## Comprehensive String Operations Example
 ## Shows practical usage of all string features
 
-import ../src/nimini
-import ../src/nimini/backends/python_backend
-import ../src/nimini/backends/javascript_backend
+import ../nimini
+import ../nimini/backends/python_backend
+import ../nimini/backends/javascript_backend
 
 proc main() =
   echo "=== Comprehensive String Operations Example ==="

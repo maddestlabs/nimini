@@ -1,7 +1,7 @@
 ## Tests for the {.nimini.} autopragma system
 
-import ../src/nimini
-import ../src/nimini/autopragma
+import ../nimini
+import ../nimini/autopragma
 
 # Test functions marked with {.nimini.}
 proc testAdd(env: ref Env; args: seq[Value]): Value {.nimini.} =

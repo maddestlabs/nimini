@@ -1,6 +1,6 @@
 ## Comprehensive Lambda and Do Notation Tests for Nimini
 
-import src/nimini
+import ../nimini
 import std/strutils
 
 echo "=" .repeat(70)

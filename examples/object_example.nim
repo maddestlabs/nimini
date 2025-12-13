@@ -1,6 +1,6 @@
 ## Example demonstrating Object Types and Object Construction in Nimini
 
-import ../src/nimini
+import ../nimini
 
 let exampleCode = """
 # Define a Vector2 type for 2D positions

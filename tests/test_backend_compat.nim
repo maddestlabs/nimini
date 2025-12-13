@@ -1,7 +1,7 @@
 ## Test backward compatibility of Nim code generation
 ## Ensures that existing Nim codegen still works after backend refactoring
 
-import ../src/nimini
+import ../nimini
 import std/strutils
 
 proc testBasicCodegen() =

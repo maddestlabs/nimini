@@ -1,6 +1,6 @@
 ## Nimini Codegen Example - Using CodegenExtension
 
-import ../src/nimini
+import ../nimini
 
 # Avoid naming conflict by importing with except
 import std/math except sqrt, pow

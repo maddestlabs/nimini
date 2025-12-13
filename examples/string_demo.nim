@@ -1,8 +1,8 @@
 # Simple string operations demo using Nimini DSL
 # This demonstrates the $ operator, string slicing, and string methods
 
-import ../src/nimini
-import ../src/nimini/backends/[nim_backend, python_backend, javascript_backend]
+import ../nimini
+import ../nimini/backends/[nim_backend, python_backend, javascript_backend]
 
 proc main() =
   echo "=== Testing String Operations in Nimini ==="

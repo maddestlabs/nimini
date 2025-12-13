@@ -1,6 +1,6 @@
 ## Final comprehensive test of for loops and while statements
 
-import ../src/nimini/[tokenizer, parser, codegen, runtime]
+import ../nimini/[tokenizer, parser, codegen, runtime]
 
 echo "=== Nimini Loop Implementation Test Suite ===\n"
 

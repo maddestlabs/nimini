@@ -1,7 +1,7 @@
 ## Quick Python Frontend Demo
 ## Write Python, generate Nim/Python/JavaScript
 
-import src/nimini
+import nimini
 import std/strutils
 
 # Python code

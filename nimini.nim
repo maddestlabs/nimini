@@ -29,7 +29,7 @@
 ##   # Or specify frontend explicitly
 ##   let program = compileSource(myCode, getNimFrontend())
 
-import nimini/[ast, runtime, tokenizer, parser, codegen, codegen_ext, backend, frontend]
+import nimini/[ast, runtime, tokenizer, plugin, parser, codegen, codegen_ext, backend, frontend]
 import nimini/stdlib/seqops
 
 # backends allow exporting generated code in various languages
@@ -49,6 +49,7 @@ export ast
 export tokenizer
 export parser
 export runtime
+export plugin
 export codegen
 export codegen_ext
 export nim_extensions  # Nim-specific language extensions (autopragma features)
@@ -71,3 +72,7 @@ export javascript_backend
 
 export frontend
 export nim_frontend
+# Uncomment to export Python frontend:
+# export py_frontend
+# Uncomment to export JavaScript frontend:
+# export js_frontend

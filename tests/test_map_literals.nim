@@ -1,6 +1,6 @@
 ## Test script for map literal support in Nimini
 
-import nimini
+import ../nimini
 
 let code = """
 # Test basic map literal

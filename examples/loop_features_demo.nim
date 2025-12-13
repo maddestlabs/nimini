@@ -3,7 +3,7 @@
 # - Loop labels with break/continue
 # - Multi-variable for loops
 
-import ../src/nimini
+import ../nimini
 
 echo "=== Nimini Loop Features Demo ==="
 echo ""

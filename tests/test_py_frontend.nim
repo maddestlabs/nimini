@@ -1,6 +1,6 @@
 # Tests for Python Frontend
 
-import ../src/nimini
+import ../nimini
 import std/[unittest, strutils]
 
 suite "Python Frontend":

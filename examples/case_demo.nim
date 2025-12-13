@@ -1,6 +1,6 @@
 ## Simple demonstration of case statements in Nimini
 
-import ../src/nimini
+import ../nimini
 
 echo "=== Nimini Case Statement Demo ==="
 echo ""

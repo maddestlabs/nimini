@@ -1,6 +1,6 @@
 ## Test multi-line object construction
 
-import ../src/nimini
+import ../nimini
 import std/[unittest, strutils]
 
 suite "Multi-line Object Construction Tests":

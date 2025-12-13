@@ -1,6 +1,6 @@
 ## Comprehensive example showing for and while loops
 
-import ../src/nimini/[tokenizer, parser, codegen]
+import ../nimini/[tokenizer, parser, codegen]
 import std/strutils
 
 echo """

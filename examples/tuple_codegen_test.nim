@@ -1,5 +1,5 @@
 # Integration test: Nimini -> Nim code generation for tuples
-import ../src/nimini
+import ../nimini
 
 echo "=== Testing Nimini Tuple Code Generation ==="
 echo ""

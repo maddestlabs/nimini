@@ -1,6 +1,6 @@
 # Tests for JavaScript Frontend
 
-import ../src/nimini
+import ../nimini
 import std/[unittest, strutils]
 
 suite "JavaScript Frontend":

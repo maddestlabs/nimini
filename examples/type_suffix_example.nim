@@ -1,9 +1,9 @@
 ## Type Suffix Example
 ## Demonstrates support for type suffixes on numeric literals
 
-import ../src/nimini
-import ../src/nimini/backends/python_backend
-import ../src/nimini/backends/javascript_backend
+import ../nimini
+import ../nimini/backends/python_backend
+import ../nimini/backends/javascript_backend
 
 proc main() =
   echo "=== Type Suffix Support Example ==="
