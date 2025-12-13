@@ -33,7 +33,10 @@ proc match(p: var Parser; kinds: varargs[TokenKind]): bool =
 
 proc expect(p: var Parser; kind: TokenKind; msg: string): Token =
   if p.cur().kind != kind:
-    quit "Parse Error: " & msg & " at line " & $p.cur().line
+    var err = newException(NiminiParseError, msg & " at line " & $p.cur().line)
+    err.line = p.cur().line
+    err.col = p.cur().col
+    raise err
   advance(p)
 
 # precedence -----------------------------------------------------------
@@ -61,7 +64,10 @@ proc parseType(p: var Parser): TypeNode =
   let t = p.cur()
   
   if t.kind != tkIdent:
-    quit "Parse Error: Expected type name at line " & $t.line
+    var err = newException(NiminiParseError, "Expected type name at line " & $t.line)
+    err.line = t.line
+    err.col = t.col
+    raise err
   
   let typeName = t.lexeme
   discard p.advance()
@@ -154,7 +160,10 @@ proc parseEnumType(p: var Parser): TypeNode =
     if p.cur().kind == tkOp and p.cur().lexeme == "=":
       discard p.advance()
       if p.cur().kind != tkInt:
-        quit "Expected integer ordinal value for enum at line " & $p.cur().line
+        var err = newException(NiminiParseError, "Expected integer ordinal value for enum at line " & $p.cur().line)
+        err.line = p.cur().line
+        err.col = p.cur().col
+        raise err
       ordinal = parseInt(p.cur().lexeme)
       discard p.advance()
     
@@ -398,10 +407,13 @@ proc parsePrefix(p: var Parser): Expr =
   of tkOp:
     if t.lexeme in ["-", "$"]:
       discard p.advance()
-      let v = parseExpr(p, 100)
+      let v = parsePrefix(p)
       newUnaryOp(t.lexeme, v, t.line, t.col)
     else:
-      quit "Unexpected prefix operator at line " & $t.line
+      var err = newException(NiminiParseError, "Unexpected prefix operator at line " & $t.line)
+      err.line = t.line
+      err.col = t.col
+      raise err
 
   of tkLParen:
     # Parse tuple literal or parenthesized expression
@@ -480,7 +492,10 @@ proc parsePrefix(p: var Parser): Expr =
     if p.cur().kind != tkRBrace:
       # Parse first key-value pair
       if p.cur().kind != tkIdent and p.cur().kind != tkString:
-        quit "Map literal keys must be identifiers or strings at line " & $t.line
+        var err = newException(NiminiParseError, "Map literal keys must be identifiers or strings at line " & $t.line)
+        err.line = t.line
+        err.col = t.col
+        raise err
       let key = p.cur().lexeme
       discard p.advance()
       discard expect(p, tkColon, "Expected ':' after map key")
@@ -492,7 +507,10 @@ proc parsePrefix(p: var Parser): Expr =
         if p.cur().kind == tkRBrace:
           break  # Allow trailing comma
         if p.cur().kind != tkIdent and p.cur().kind != tkString:
-          quit "Map literal keys must be identifiers or strings at line " & $p.cur().line
+          var err = newException(NiminiParseError, "Map literal keys must be identifiers or strings at line " & $p.cur().line)
+          err.line = p.cur().line
+          err.col = p.cur().col
+          raise err
         let pairKey = p.cur().lexeme
         discard p.advance()
         discard expect(p, tkColon, "Expected ':' after map key")
@@ -500,10 +518,16 @@ proc parsePrefix(p: var Parser): Expr =
         pairs.add((pairKey, pairValue))
     
     discard expect(p, tkRBrace, "Expected '}'")
-    newMap(pairs, t.line, t.col)
+    var err = newException(NiminiParseError, "Unexpected token in expression at line " & $t.line)
+    err.line = t.line
+    err.col = t.col
+    raise err
 
   else:
-    quit "Unexpected token in expression at line" & $t.line
+    var err = newException(NiminiParseError, "Unexpected token in expression at line " & $t.line)
+    err.line = t.line
+    err.col = t.col
+    raise err
 
 # Pratt led -------------------------------------------------------------
 
@@ -577,7 +601,10 @@ proc parseVarStmt(p: var Parser; isLet: bool; isConst: bool = false): Stmt =
   # Check if this is tuple unpacking: let (x, y) = ...
   if p.cur().kind == tkLParen:
     if isConst:
-      quit "Tuple unpacking not supported for const at line " & $kw.line
+      var err = newException(NiminiParseError, "Tuple unpacking not supported for const at line " & $kw.line)
+      err.line = kw.line
+      err.col = kw.col
+      raise err
     
     discard p.advance()
     var names: seq[string] = @[]
@@ -623,9 +650,20 @@ proc parseVarStmt(p: var Parser; isLet: bool; isConst: bool = false): Stmt =
 
 proc parseAssign(p: var Parser; targetExpr: Expr; line, col: int): Stmt =
   # targetExpr is already parsed (e.g., identifier or array index)
-  discard expect(p, tkOp, "Expected '='")
-  let val = parseExpr(p)
-  newAssignExpr(targetExpr, val, line, col)
+  let opToken = expect(p, tkOp, "Expected assignment operator")
+  let op = opToken.lexeme
+  
+  # Check if this is a compound assignment operator (+=, -=, *=, /=, %=)
+  if op in ["+=", "-=", "*=", "/=", "%="]:
+    # Desugar: x += y  becomes  x = x + y
+    let baseOp = op[0..0]  # Extract +, -, *, /, or %
+    let rightVal = parseExpr(p)
+    let expandedVal = newBinOp(baseOp, targetExpr, rightVal, line, col)
+    newAssignExpr(targetExpr, expandedVal, line, col)
+  else:
+    # Regular assignment: x = y
+    let val = parseExpr(p)
+    newAssignExpr(targetExpr, val, line, col)
 
 proc parseIf(p: var Parser): Stmt =
   let tok = advance(p)
@@ -673,7 +711,10 @@ proc parseFor(p: var Parser): Stmt =
   
   # Expect "in" keyword
   if p.cur().kind != tkIdent or p.cur().lexeme != "in":
-    quit "Parse Error: Expected 'in' after for variable at line " & $p.cur().line
+    var err = newException(NiminiParseError, "Expected 'in' after for variable at line " & $p.cur().line)
+    err.line = p.cur().line
+    err.col = p.cur().col
+    raise err
   discard p.advance()
 
   # Parse the iterable expression (e.g., 1..5, range(1,10), someArray, etc.)
@@ -844,7 +885,11 @@ proc parseStmt(p: var Parser): Stmt =
   while p.cur().kind == tkIndent or p.cur().kind == tkDedent:
     discard p.advance()
     if p.atEnd():
-      quit "Unexpected end of input"
+      var err = newException(NiminiParseError, "Unexpected end of input")
+      if not p.atEnd():
+        err.line = p.cur().line
+        err.col = p.cur().col
+      raise err
   
   let t = p.cur()
 
@@ -946,8 +991,8 @@ proc parseStmt(p: var Parser): Stmt =
     else:
       # Parse as expression first (could be assignment target or just expression)
       let e = parseExpr(p)
-      # Check if this is an assignment
-      if p.cur().kind == tkOp and p.cur().lexeme == "=":
+      # Check if this is an assignment (including compound assignments)
+      if p.cur().kind == tkOp and p.cur().lexeme in ["=", "+=", "-=", "*=", "/=", "%="]:
         return parseAssign(p, e, t.line, t.col)
       return newExprStmt(e, t.line, t.col)
 
@@ -959,7 +1004,10 @@ proc parseStmt(p: var Parser): Stmt =
 proc parseBlock(p: var Parser): seq[Stmt] =
   result = @[]
   if not match(p, tkIndent):
-    quit "Expected indent block at line " & $p.cur().line
+    var err = newException(NiminiParseError, "Expected indent block at line " & $p.cur().line)
+    err.line = p.cur().line
+    err.col = p.cur().col
+    raise err
 
   while not p.atEnd():
     if match(p, tkDedent):

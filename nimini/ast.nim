@@ -1,6 +1,25 @@
 # Abstract Syntax Tree for the Nimini, the mini-Nim DSL
 
 # ------------------------------------------------------------------------------
+# Error Types
+# ------------------------------------------------------------------------------
+
+type
+  NiminiError* = object of CatchableError
+    ## Base exception type for all nimini errors
+    line*: int
+    col*: int
+  
+  NiminiTokenizeError* = object of NiminiError
+    ## Error during tokenization phase
+  
+  NiminiParseError* = object of NiminiError
+    ## Error during parsing phase
+  
+  NiminiRuntimeError* = object of NiminiError
+    ## Error during runtime execution
+
+# ------------------------------------------------------------------------------
 # Type Annotations
 # ------------------------------------------------------------------------------
 

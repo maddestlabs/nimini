@@ -2,6 +2,7 @@
 # Clean, strict-mode-safe tokenizer for the Mini-Nim DSL
 
 import std/[strutils]
+import ast
 
 # ------------------------------------------------------------------------------
 # Token Types
@@ -185,7 +186,10 @@ proc tokenizeDsl*(src: string): seq[Token] =
         inc i; inc col
 
       if i >= src.len:
-        quit "Unterminated string at line " & $line
+        var err = newException(NiminiTokenizeError, "Unterminated string at line " & $line)
+        err.line = line
+        err.col = startCol
+        raise err
 
       # skip closing quote
       inc i; inc col
@@ -266,6 +270,12 @@ proc tokenizeDsl*(src: string): seq[Token] =
         inc i, 2
         col += 2
         continue
+      of "+=", "-=", "*=", "/=", "%=":
+        # Compound assignment operators
+        addToken(res, tkOp, two, line, startCol)
+        inc i, 2
+        col += 2
+        continue
       of "..":
         # Check for ..< (three-char operator)
         if i+2 < src.len and src[i+2] == '<':
@@ -298,7 +308,10 @@ proc tokenizeDsl*(src: string): seq[Token] =
       inc i; inc col
       continue
     else:
-      quit "Unexpected character '" & $c & "' at " & $line & ":" & $col
+      var err = newException(NiminiTokenizeError, "Unexpected character '" & $c & "' at " & $line & ":" & $col)
+      err.line = line
+      err.col = col
+      raise err
 
   # End of input: emit any remaining dedents
   while indentStack.len > 1:
