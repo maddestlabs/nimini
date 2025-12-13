@@ -595,15 +595,16 @@ proc parseExpr(p: var Parser; prec=0): Expr =
 
 # statements ------------------------------------------------------------
 
-proc parseVarStmt(p: var Parser; isLet: bool; isConst: bool = false): Stmt =
-  let kw = advance(p)
+proc parseSingleVarDecl(p: var Parser; isLet: bool; isConst: bool; line, col: int): Stmt =
+  ## Parse a single variable/let/const declaration (name: Type = value)
+  ## Does NOT consume the keyword (already consumed by caller)
   
   # Check if this is tuple unpacking: let (x, y) = ...
   if p.cur().kind == tkLParen:
     if isConst:
-      var err = newException(NiminiParseError, "Tuple unpacking not supported for const at line " & $kw.line)
-      err.line = kw.line
-      err.col = kw.col
+      var err = newException(NiminiParseError, "Tuple unpacking not supported for const at line " & $line)
+      err.line = line
+      err.col = col
       raise err
     
     discard p.advance()
@@ -625,9 +626,9 @@ proc parseVarStmt(p: var Parser; isLet: bool; isConst: bool = false): Stmt =
     let val = parseExpr(p)
     
     if isLet:
-      return newLetUnpack(names, val, typeAnnotation, kw.line, kw.col)
+      return newLetUnpack(names, val, typeAnnotation, line, col)
     else:
-      return newVarUnpack(names, val, typeAnnotation, kw.line, kw.col)
+      return newVarUnpack(names, val, typeAnnotation, line, col)
   
   # Regular variable declaration
   let nameTok = expect(p, tkIdent, "Expected identifier")
@@ -642,11 +643,121 @@ proc parseVarStmt(p: var Parser; isLet: bool; isConst: bool = false): Stmt =
   let val = parseExpr(p)
   
   if isConst:
-    newConst(nameTok.lexeme, val, typeAnnotation, kw.line, kw.col)
+    newConst(nameTok.lexeme, val, typeAnnotation, line, col)
   elif isLet:
-    newLet(nameTok.lexeme, val, typeAnnotation, kw.line, kw.col)
+    newLet(nameTok.lexeme, val, typeAnnotation, line, col)
   else:
-    newVar(nameTok.lexeme, val, typeAnnotation, kw.line, kw.col)
+    newVar(nameTok.lexeme, val, typeAnnotation, line, col)
+
+proc parseVarStmt(p: var Parser; isLet: bool; isConst: bool = false): Stmt =
+  let kw = advance(p)
+  parseSingleVarDecl(p, isLet, isConst, kw.line, kw.col)
+
+proc parseMultilineVars(p: var Parser; isLet: bool; line, col: int): seq[Stmt] =
+  ## Parse a multiline var or let block:
+  ## var
+  ##   a = 1
+  ##   b = 2
+  result = @[]
+  
+  let keyword = if isLet: "let" else: "var"
+  
+  # Expect newline then indent
+  discard expect(p, tkNewline, "Expected newline after '" & keyword & "'")
+  if not match(p, tkIndent):
+    # Single-line var/let without indent, this shouldn't happen
+    var err = newException(NiminiParseError, "Expected indentation after '" & keyword & "' at line " & $line)
+    err.line = line
+    err.col = col
+    raise err
+  
+  # Parse var/let declarations
+  while not p.atEnd():
+    if match(p, tkDedent):
+      break
+    if p.cur().kind == tkNewline:
+      discard p.advance()
+      continue
+    
+    # Parse single var/let declaration
+    let varStmt = parseSingleVarDecl(p, isLet, false, line, col)
+    result.add(varStmt)
+    discard match(p, tkNewline)
+
+proc parseMultilineConsts(p: var Parser; line, col: int): seq[Stmt] =
+  ## Parse a multiline const block:
+  ## const
+  ##   a = 1
+  ##   b = 2
+  result = @[]
+  
+  # Expect newline then indent
+  discard expect(p, tkNewline, "Expected newline after 'const'")
+  if not match(p, tkIndent):
+    # Single-line const without indent, this shouldn't happen
+    var err = newException(NiminiParseError, "Expected indentation after 'const' at line " & $line)
+    err.line = line
+    err.col = col
+    raise err
+  
+  # Parse const declarations
+  while not p.atEnd():
+    if match(p, tkDedent):
+      break
+    if p.cur().kind == tkNewline:
+      discard p.advance()
+      continue
+    
+    # Parse single const declaration
+    let constStmt = parseSingleVarDecl(p, false, true, line, col)
+    result.add(constStmt)
+    discard match(p, tkNewline)
+
+proc parseSingleTypeDecl(p: var Parser; line, col: int): Stmt =
+  ## Parse a single type declaration (TypeName = TypeValue)
+  ## Does NOT consume the 'type' keyword (already consumed by caller)
+  let typeName = expect(p, tkIdent, "Expected type name").lexeme
+  discard expect(p, tkOp, "Expected '='")
+  
+  # Check if this is an object or enum type
+  let typeValue = 
+    if p.cur().kind == tkIdent and p.cur().lexeme == "object":
+      parseObjectType(p)
+    elif p.cur().kind == tkIdent and p.cur().lexeme == "enum":
+      parseEnumType(p)
+    else:
+      parseType(p)
+  
+  return newType(typeName, typeValue, line, col)
+
+proc parseMultilineTypes(p: var Parser; line, col: int): seq[Stmt] =
+  ## Parse a multiline type block:
+  ## type
+  ##   MyInt = int
+  ##   MyFloat = float
+  result = @[]
+  
+  # Expect newline then indent
+  discard expect(p, tkNewline, "Expected newline after 'type'")
+  if not match(p, tkIndent):
+    # Single-line type without indent, this shouldn't happen
+    var err = newException(NiminiParseError, "Expected indentation after 'type' at line " & $line)
+    err.line = line
+    err.col = col
+    raise err
+  
+  # Parse type declarations
+  while not p.atEnd():
+    if match(p, tkDedent):
+      break
+    if p.cur().kind == tkNewline:
+      discard p.advance()
+      continue
+    
+    # Parse single type declaration
+    let typeStmt = parseSingleTypeDecl(p, line, col)
+    result.add(typeStmt)
+    discard match(p, tkNewline)
 
 proc parseAssign(p: var Parser; targetExpr: Expr; line, col: int): Stmt =
   # targetExpr is already parsed (e.g., identifier or array index)
@@ -895,29 +1006,60 @@ proc parseStmt(p: var Parser): Stmt =
 
   if t.kind == tkIdent:
     case t.lexeme
-    of "var": return parseVarStmt(p, false, false)
-    of "let": return parseVarStmt(p, true, false)
-    of "const": return parseVarStmt(p, false, true)
+    of "var":
+      # Check if this is multiline var block (var followed by newline)
+      let varTok = p.advance()
+      if p.cur().kind == tkNewline:
+        # Multiline var block - this shouldn't be handled in parseStmt
+        var err = newException(NiminiParseError, "Internal error: multiline var should be handled at block level")
+        err.line = varTok.line
+        err.col = varTok.col
+        raise err
+      else:
+        # Single-line var: var name = value
+        return parseSingleVarDecl(p, false, false, varTok.line, varTok.col)
+    of "let":
+      # Check if this is multiline let block (let followed by newline)
+      let letTok = p.advance()
+      if p.cur().kind == tkNewline:
+        # Multiline let block - this shouldn't be handled in parseStmt
+        var err = newException(NiminiParseError, "Internal error: multiline let should be handled at block level")
+        err.line = letTok.line
+        err.col = letTok.col
+        raise err
+      else:
+        # Single-line let: let name = value
+        return parseSingleVarDecl(p, true, false, letTok.line, letTok.col)
+    of "const":
+      # Check if this is multiline const block (const followed by newline)
+      let constTok = p.advance()
+      if p.cur().kind == tkNewline:
+        # Multiline const block - this shouldn't be handled in parseStmt
+        # Return a special marker that will be handled by parseBlock/parseDsl
+        var err = newException(NiminiParseError, "Internal error: multiline const should be handled at block level")
+        err.line = constTok.line
+        err.col = constTok.col
+        raise err
+      else:
+        # Single-line const: const name = value
+        return parseSingleVarDecl(p, false, true, constTok.line, constTok.col)
     of "defer":
       discard p.advance()
       discard expect(p, tkColon, "Expected ':' after defer")
       let deferredStmt = parseStmt(p)
       return newDefer(deferredStmt, t.line, t.col)
     of "type":
-      discard p.advance()
-      let typeName = expect(p, tkIdent, "Expected type name").lexeme
-      discard expect(p, tkOp, "Expected '='")
-      
-      # Check if this is an object or enum type
-      let typeValue = 
-        if p.cur().kind == tkIdent and p.cur().lexeme == "object":
-          parseObjectType(p)
-        elif p.cur().kind == tkIdent and p.cur().lexeme == "enum":
-          parseEnumType(p)
-        else:
-          parseType(p)
-      
-      return newType(typeName, typeValue, t.line, t.col)
+      # Check if this is multiline type block (type followed by newline)
+      let typeTok = p.advance()
+      if p.cur().kind == tkNewline:
+        # Multiline type block - this shouldn't be handled in parseStmt
+        var err = newException(NiminiParseError, "Internal error: multiline type should be handled at block level")
+        err.line = typeTok.line
+        err.col = typeTok.col
+        raise err
+      else:
+        # Single-line type: type Name = Value
+        return parseSingleTypeDecl(p, typeTok.line, typeTok.col)
     of "if": return parseIf(p)
     of "case": return parseCase(p)
     of "for": return parseFor(p)
@@ -1015,6 +1157,58 @@ proc parseBlock(p: var Parser): seq[Stmt] =
     if p.cur().kind == tkNewline:
       discard p.advance()
       continue
+    
+    # Check for multiline var, let, const or type blocks
+    if p.cur().kind == tkIdent:
+      if p.cur().lexeme == "var":
+        let varTok = p.advance()
+        if p.cur().kind == tkNewline:
+          # Multiline var block
+          let varStmts = parseMultilineVars(p, false, varTok.line, varTok.col)
+          result.add(varStmts)
+          continue
+        else:
+          # Single-line var, parse normally
+          result.add(parseSingleVarDecl(p, false, false, varTok.line, varTok.col))
+          discard match(p, tkNewline)
+          continue
+      elif p.cur().lexeme == "let":
+        let letTok = p.advance()
+        if p.cur().kind == tkNewline:
+          # Multiline let block
+          let letStmts = parseMultilineVars(p, true, letTok.line, letTok.col)
+          result.add(letStmts)
+          continue
+        else:
+          # Single-line let, parse normally
+          result.add(parseSingleVarDecl(p, true, false, letTok.line, letTok.col))
+          discard match(p, tkNewline)
+          continue
+      elif p.cur().lexeme == "const":
+        let constTok = p.advance()
+        if p.cur().kind == tkNewline:
+          # Multiline const block
+          let constStmts = parseMultilineConsts(p, constTok.line, constTok.col)
+          result.add(constStmts)
+          continue
+        else:
+          # Single-line const, parse normally
+          result.add(parseSingleVarDecl(p, false, true, constTok.line, constTok.col))
+          discard match(p, tkNewline)
+          continue
+      elif p.cur().lexeme == "type":
+        let typeTok = p.advance()
+        if p.cur().kind == tkNewline:
+          # Multiline type block
+          let typeStmts = parseMultilineTypes(p, typeTok.line, typeTok.col)
+          result.add(typeStmts)
+          continue
+        else:
+          # Single-line type, parse normally
+          result.add(parseSingleTypeDecl(p, typeTok.line, typeTok.col))
+          discard match(p, tkNewline)
+          continue
+    
     result.add(parseStmt(p))
     discard match(p, tkNewline)
 
@@ -1032,6 +1226,58 @@ proc parseDsl*(tokens: seq[Token]): Program =
     if p.cur().kind == tkIndent or p.cur().kind == tkDedent:
       discard p.advance()
       continue
+    
+    # Check for multiline var, let, const or type blocks
+    if p.cur().kind == tkIdent:
+      if p.cur().lexeme == "var":
+        let varTok = p.advance()
+        if p.cur().kind == tkNewline:
+          # Multiline var block
+          let varStmts = parseMultilineVars(p, false, varTok.line, varTok.col)
+          stmts.add(varStmts)
+          continue
+        else:
+          # Single-line var, parse normally
+          stmts.add(parseSingleVarDecl(p, false, false, varTok.line, varTok.col))
+          discard match(p, tkNewline)
+          continue
+      elif p.cur().lexeme == "let":
+        let letTok = p.advance()
+        if p.cur().kind == tkNewline:
+          # Multiline let block
+          let letStmts = parseMultilineVars(p, true, letTok.line, letTok.col)
+          stmts.add(letStmts)
+          continue
+        else:
+          # Single-line let, parse normally
+          stmts.add(parseSingleVarDecl(p, true, false, letTok.line, letTok.col))
+          discard match(p, tkNewline)
+          continue
+      elif p.cur().lexeme == "const":
+        let constTok = p.advance()
+        if p.cur().kind == tkNewline:
+          # Multiline const block
+          let constStmts = parseMultilineConsts(p, constTok.line, constTok.col)
+          stmts.add(constStmts)
+          continue
+        else:
+          # Single-line const, parse normally
+          stmts.add(parseSingleVarDecl(p, false, true, constTok.line, constTok.col))
+          discard match(p, tkNewline)
+          continue
+      elif p.cur().lexeme == "type":
+        let typeTok = p.advance()
+        if p.cur().kind == tkNewline:
+          # Multiline type block
+          let typeStmts = parseMultilineTypes(p, typeTok.line, typeTok.col)
+          stmts.add(typeStmts)
+          continue
+        else:
+          # Single-line type, parse normally
+          stmts.add(parseSingleTypeDecl(p, typeTok.line, typeTok.col))
+          discard match(p, tkNewline)
+          continue
+    
     stmts.add(parseStmt(p))
     discard match(p, tkNewline)
 
