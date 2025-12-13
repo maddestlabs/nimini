@@ -5,6 +5,7 @@ Nimini is a lightweight, embeddable scripting language built around [Nim](https:
 Features:
 - Zero external dependencies (Nim stdlib only)
 - Familiar Python-like syntax with Nim keywords
+- **Comprehensive math stdlib** (30+ functions, type conversions)
 - **Lambda expressions** and **do notation** for functional programming
 - Simple native function binding API
 - Event-driven architecture
@@ -32,13 +33,17 @@ proc nimHello(env: ref Env; args: seq[Value]): Value {.gcsafe.} =
   echo "Hello from DSL!"
   valNil()
 
-# Initialize runtime
+# Initialize runtime with stdlib
 initRuntime()
+initStdlib()  # Register math, type conversion, and sequence functions
 registerNative("hello", nimHello)
 
-# Parse and execute DSL code
+# Parse and execute DSL code with math functions
 let code = """
 hello()
+var radius = 5.0
+var area = PI * pow(radius, 2.0)
+echo("Circle area: " & $area)
 """
 let tokens = tokenizeDsl(code)
 let program = parseDsl(tokens)

@@ -222,7 +222,8 @@ proc valuesEqual*(a, b: Value): bool =
   of vkMap: return false       # Maps need deep comparison (not implemented)
   of vkPointer: return a.ptrVal == b.ptrVal
 
-proc toBool(v: Value): bool =
+proc toBool*(v: Value): bool =
+  ## Convert a value to boolean. Exported for use in stdlib.
   case v.kind
   of vkNil: false
   of vkBool: v.b
@@ -234,7 +235,8 @@ proc toBool(v: Value): bool =
   of vkArray: v.arr.len > 0
   of vkPointer: v.ptrVal != nil
 
-proc toFloat(v: Value): float =
+proc toFloat*(v: Value): float =
+  ## Convert a value to float. Exported for use in stdlib.
   case v.kind
   of vkInt: float(v.i)
   of vkFloat: v.f
@@ -1040,6 +1042,11 @@ proc initRuntime*() =
     stdout.write("\n")
     valNil()
   )
+  
+  # Register mathematical constants
+  defineVar(runtimeEnv, "PI", valFloat(PI))
+  defineVar(runtimeEnv, "E", valFloat(E))
+  defineVar(runtimeEnv, "TAU", valFloat(TAU))
 
 proc execProgram*(prog: Program; env: ref Env) =
   discard execBlock(prog.stmts, env)
